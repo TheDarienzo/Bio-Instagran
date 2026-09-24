@@ -45,19 +45,38 @@
   }
 
   var toastTimer;
-  function toast(msg, isErr) {
+  // toast(msg) | toast(msg, true) para erro | toast(msg, {acao: "Desfazer", ao: fn})
+  function toast(msg, opt) {
     var el = $("toast");
+    var isErr = opt === true;
     el.textContent = msg;
-    el.classList.toggle("is-err", !!isErr);
+    if (opt && opt.acao) {
+      var b = document.createElement("button");
+      b.type = "button"; b.textContent = opt.acao;
+      b.onclick = function () { el.classList.remove("is-on"); opt.ao(); };
+      el.appendChild(b);
+    }
+    el.classList.toggle("is-err", isErr);
     el.classList.add("is-on");
     clearTimeout(toastTimer);
-    toastTimer = setTimeout(function () { el.classList.remove("is-on"); }, isErr ? 4000 : 2200);
+    toastTimer = setTimeout(function () { el.classList.remove("is-on"); }, isErr ? 4000 : (opt && opt.acao ? 6000 : 2200));
   }
 
   function refreshPreview() {
-    var f = $("preview");
-    if (f && f.contentWindow) { try { f.contentWindow.location.reload(); } catch (e) { f.src = f.src; } }
+    ["preview", "previewMobile"].forEach(function (id) {
+      var f = $(id);
+      if (f && f.getAttribute("src")) { try { f.contentWindow.location.reload(); } catch (e) { f.src = f.getAttribute("src"); } }
+    });
   }
+
+  /* ═══════════ Prévia no celular (gaveta) ═══════════ */
+  var drawer = $("drawer");
+  $("fabPreview").addEventListener("click", function () {
+    var f = $("previewMobile");
+    if (!f.getAttribute("src")) f.src = "index.html";
+    drawer.hidden = false;
+  });
+  drawer.addEventListener("click", function (e) { if (e.target.closest("[data-close]")) drawer.hidden = true; });
 
   // ISO (UTC) → valor para <input type="datetime-local"> no fuso local
   function toLocalInput(iso) {
@@ -183,6 +202,80 @@
     else showGate();
   });
 
+  /* ═══════════ Atalhos: Ctrl+K (busca) e Ctrl+S (salvar) ═══════════ */
+
+  var palette = $("palette"), paletteInput = $("paletteInput"), paletteList = $("paletteList");
+  var paletteItems = [], paletteIdx = 0;
+  var ICO = {
+    tab: '<svg viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg>',
+    link: '<svg viewBox="0 0 24 24"><path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/></svg>',
+    acao: '<svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>',
+  };
+  var TABS = { dash: "Visão geral", links: "Links", whatsapp: "Lojas", perfil: "Perfil", redes: "Redes", horario: "Horário", acessos: "Acessos" };
+
+  function goTab(tab) { var b = document.querySelector('#nav [data-tab="' + tab + '"]'); if (b) b.click(); }
+
+  function openPalette() {
+    palette.hidden = false;
+    paletteInput.value = "";
+    buildPalette("");
+    setTimeout(function () { paletteInput.focus(); }, 30);
+  }
+  function closePalette() { palette.hidden = true; }
+
+  function buildPalette(q) {
+    q = q.trim().toLowerCase();
+    var itens = [];
+    Object.keys(TABS).forEach(function (t) { itens.push({ tipo: "tab", rotulo: "Ir para " + TABS[t], sub: "aba", ao: function () { goTab(t); } }); });
+    itens.push({ tipo: "acao", rotulo: "Novo link", sub: "ação", ao: function () { goTab("links"); openEditor(null, "link"); } });
+    itens.push({ tipo: "acao", rotulo: "Nova seção", sub: "ação", ao: function () { goTab("links"); openEditor(null, "secao"); } });
+    itens.push({ tipo: "acao", rotulo: "Promoção relâmpago (24h)", sub: "ação", ao: function () { goTab("links"); abrirRelampago(); } });
+    itens.push({ tipo: "acao", rotulo: "Nova loja", sub: "ação", ao: function () { goTab("whatsapp"); openWaEditor(null); } });
+    itens.push({ tipo: "acao", rotulo: "Abrir a página", sub: "nova aba", ao: function () { window.open(conf.url || "index.html", "_blank"); } });
+    links.forEach(function (l) { itens.push({ tipo: "link", rotulo: l.titulo, sub: l.tipo === "secao" ? "seção" : (l.ativo ? "editar link" : "editar link · escondido"), ao: function () { goTab("links"); openEditor(l); } }); });
+    whatsapps.forEach(function (w) { itens.push({ tipo: "link", rotulo: w.nome || fmtNumero(w.numero), sub: "editar loja", ao: function () { goTab("whatsapp"); openWaEditor(w); } }); });
+
+    paletteItems = q ? itens.filter(function (i) { return (i.rotulo + " " + i.sub).toLowerCase().indexOf(q) >= 0; }) : itens.slice(0, 12);
+    paletteIdx = 0;
+    paletteList.innerHTML = paletteItems.length
+      ? paletteItems.map(function (i, k) { return '<li data-i="' + k + '"' + (k === 0 ? ' class="is-active"' : "") + ">" + ICO[i.tipo] + "<span>" + esc(i.rotulo) + "</span><small>" + esc(i.sub) + "</small></li>"; }).join("")
+      : '<li class="is-empty">Nada encontrado para "' + esc(q) + '"</li>';
+  }
+
+  function runPalette(k) { var it = paletteItems[k]; if (!it) return; closePalette(); it.ao(); }
+
+  $("openPalette").addEventListener("click", openPalette);
+  palette.addEventListener("click", function (e) {
+    if (e.target.closest("[data-close]")) return closePalette();
+    var li = e.target.closest("li[data-i]"); if (li) runPalette(+li.dataset.i);
+  });
+  paletteInput.addEventListener("input", function () { buildPalette(paletteInput.value); });
+  paletteInput.addEventListener("keydown", function (e) {
+    if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+      e.preventDefault();
+      paletteIdx = (paletteIdx + (e.key === "ArrowDown" ? 1 : -1) + paletteItems.length) % Math.max(1, paletteItems.length);
+      paletteList.querySelectorAll("li").forEach(function (li, k) { li.classList.toggle("is-active", k === paletteIdx); });
+      var ativo = paletteList.querySelector(".is-active"); if (ativo) ativo.scrollIntoView({ block: "nearest" });
+    }
+    if (e.key === "Enter") runPalette(paletteIdx);
+  });
+
+  document.addEventListener("keydown", function (e) {
+    var mod = e.ctrlKey || e.metaKey;
+    if (mod && e.key.toLowerCase() === "k") { e.preventDefault(); if (!shell.hidden) (palette.hidden ? openPalette() : closePalette()); }
+    if (e.key === "Escape" && !palette.hidden) closePalette();
+    if (e.key === "Escape" && !drawer.hidden) drawer.hidden = true;
+    if (mod && e.key.toLowerCase() === "s" && !shell.hidden) {
+      e.preventDefault();
+      // salva o que estiver aberto: editor de link/loja/acesso, senão o formulário da aba
+      var alvo = !editor.hidden ? linkForm : !waEditor.hidden ? waForm : !accessEditor.hidden ? accessForm
+        : document.querySelector(".panel.is-active form.form--wide");
+      if (alvo && alvo.requestSubmit) alvo.requestSubmit();
+      else if (alvo) alvo.dispatchEvent(new Event("submit", { cancelable: true }));
+      else toast("Nada para salvar nesta aba");
+    }
+  });
+
   var entered = false;
   function enter(session) {
     me = session.user;
@@ -212,17 +305,27 @@
 
   /* ═══════════ Carregar dados ═══════════ */
 
+  var cliques7 = {}; // link_id -> [cliques por dia, 7 dias]
+
   function loadAll() {
+    var d7 = new Date(); d7.setDate(d7.getDate() - 6); d7.setHours(0, 0, 0, 0);
     Promise.all([
       sb.from("configuracoes").select("*").eq("id", 1).maybeSingle(),
       sb.from("redes").select("*").order("ordem"),
       sb.from("links").select("*").order("ordem"),
       sb.from("whatsapps").select("*").order("ordem"),
+      sb.from("cliques").select("link_id,criado_em").gte("criado_em", d7.toISOString()).limit(10000),
     ]).then(function (res) {
       conf = res[0].data || { id: 1, horario: {} };
       redes = res[1].data || [];
       links = res[2].data || [];
       whatsapps = res[3].data || [];
+      cliques7 = {};
+      (res[4].data || []).forEach(function (c) {
+        var i = Math.floor((new Date(c.criado_em) - d7) / 864e5);
+        if (i < 0 || i > 6) return;
+        (cliques7[c.link_id] = cliques7[c.link_id] || [0, 0, 0, 0, 0, 0, 0])[i]++;
+      });
       renderLinks();
       renderWa();
       fillPerfil();
@@ -260,6 +363,32 @@
     return l.url || "sem endereço";
   }
 
+  // "2d 3h", "5h", "40min"
+  function fmtRestante(ms) {
+    var m = Math.max(0, Math.round(ms / 60000)), h = Math.floor(m / 60), d = Math.floor(h / 24);
+    if (d >= 1) return d + "d " + (h % 24) + "h";
+    if (h >= 1) return h + "h" + (m % 60 ? " " + (m % 60) + "min" : "");
+    return m + "min";
+  }
+
+  function sparkline(id) {
+    var v = cliques7[id];
+    if (!v) return "";
+    var max = Math.max.apply(null, v) || 1;
+    return '<svg class="spark" viewBox="0 0 46 18" title="cliques nos últimos 7 dias">' + v.map(function (n, i) {
+      var h = n ? Math.max(3, Math.round(n / max * 16)) : 2;
+      return '<rect x="' + (i * 6.5) + '" y="' + (18 - h) + '" width="5" height="' + h + '" rx="1.5"' + (n ? "" : ' class="is-zero"') + "/>";
+    }).join("") + "</svg>";
+  }
+
+  function favicon(l) {
+    if (!l.url || !/^https?:/i.test(l.url)) return "";
+    try {
+      var host = new URL(l.url).hostname;
+      return '<img class="row__fav" alt="" src="https://www.google.com/s2/favicons?domain=' + esc(host) + '&sz=32" onerror="this.remove()">';
+    } catch (e) { return ""; }
+  }
+
   function renderLinks() {
     linkRows.innerHTML = "";
     $("linksEmpty").hidden = links.length > 0;
@@ -268,10 +397,13 @@
       var li = document.createElement("li");
       li.dataset.id = l.id;
       var pills = "";
-      if (l.inicio || l.fim) {
-        var ativoAgora = (!l.inicio || now >= new Date(l.inicio)) && (!l.fim || now <= new Date(l.fim));
-        pills += '<span class="row__pill' + (ativoAgora ? " is-sched" : "") + '">' +
-          (l.inicio ? fmtData(l.inicio) : "…") + " → " + (l.fim ? fmtData(l.fim) : "…") + "</span>";
+      if (l.inicio && now < new Date(l.inicio)) {
+        pills += '<span class="row__pill">entra em ' + fmtRestante(new Date(l.inicio) - now) + "</span>";
+      } else if (l.fim && now <= new Date(l.fim)) {
+        var resta = new Date(l.fim) - now;
+        pills += '<span class="row__pill ' + (resta < 864e5 * 2 ? "is-expiring" : "is-sched") + '">some em ' + fmtRestante(resta) + "</span>";
+      } else if (l.fim && now > new Date(l.fim)) {
+        pills += '<span class="row__pill">expirado</span>';
       }
       if (l.tipo === "secao") {
         li.className = "row row--section" + (l.ativo ? "" : " is-off");
@@ -281,16 +413,43 @@
       } else {
         li.className = "row" + (l.destaque ? " row--featured" : "") + (l.ativo ? "" : " is-off");
         li.innerHTML = HANDLE +
-          '<span class="row__icon">' + ICONS.svg(l.icone) + "</span>" +
+          '<span class="row__icon">' + ICONS.svg(l.icone) + favicon(l) + "</span>" +
           '<div class="row__body"><span class="row__title">' + esc(l.titulo) +
             (l.selo ? '<span class="row__badge">' + esc(l.selo) + "</span>" : "") + pills + "</span>" +
             '<span class="row__sub">' + esc(l.subtitulo ? l.subtitulo + " · " + descreveDestino(l) : descreveDestino(l)) + "</span></div>" +
-          '<div class="row__right"><span class="row__clicks">' + l.cliques + (l.cliques === 1 ? " clique" : " cliques") + "</span>" +
+          '<div class="row__right">' + sparkline(l.id) + '<span class="row__clicks">' + l.cliques + (l.cliques === 1 ? " clique" : " cliques") + "</span>" +
+            '<button type="button" class="row__top" data-top title="Mover para o topo"><svg viewBox="0 0 24 24"><path d="M12 19V6M6 12l6-6 6 6"/></svg></button>' +
             '<label class="switch"><input type="checkbox" data-toggle' + (l.ativo ? " checked" : "") + '><span></span></label></div>';
       }
       linkRows.appendChild(li);
     });
   }
+
+  linkRows.addEventListener("click", function (e) {
+    var b = e.target.closest("[data-top]");
+    if (!b) return;
+    var li = b.closest("li");
+    if (li === linkRows.firstElementChild) return;
+    linkRows.insertBefore(li, linkRows.firstElementChild);
+    saveOrder("links", links, linkRows);
+  });
+
+  // ─── Promoção relâmpago: link em destaque que some em 24h ───
+  function abrirRelampago() {
+    openEditor(null, "link");
+    var ini = new Date(), fim = new Date(Date.now() + 24 * 3600 * 1000);
+    $("editorTitle").textContent = "Promoção relâmpago";
+    linkForm.titulo.value = "Promoção relâmpago";
+    linkForm.subtitulo.value = "Só até amanhã, " + fim.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+    linkForm.selo.value = "24h";
+    linkForm.destaque.checked = true;
+    linkForm.icone.value = "percent";
+    linkForm.inicio.value = toLocalInput(ini.toISOString());
+    linkForm.fim.value = toLocalInput(fim.toISOString());
+    linkForm.querySelector(".sched").open = true;
+    setTimeout(function () { linkForm.titulo.select(); }, 60);
+  }
+  $("addFlash").addEventListener("click", abrirRelampago);
 
   linkRows.addEventListener("change", function (e) {
     if (!e.target.matches("[data-toggle]")) return;
@@ -357,6 +516,7 @@
     $("linkError").textContent = "";
     $("editorTitle").textContent = link ? "Editar" : (tipo === "secao" ? "Nova seção" : "Novo link");
     $("deleteLink").hidden = !link;
+    $("dupLink").hidden = !link;
     $("linkStat").textContent = link && link.tipo === "link" ? link.cliques + " cliques até agora" : "";
 
     var usaWa = !!(link && usaWhatsapp(link));
@@ -433,16 +593,38 @@
       .finally(function () { busy(btn, false); });
   });
 
+  // apaga sem perguntar, mas dá 6 segundos para desfazer
   $("deleteLink").addEventListener("click", function () {
-    if (!editing || !confirm('Apagar "' + editing.titulo + '"? Isso não tem volta.')) return;
+    if (!editing) return;
     var alvo = editing;
     sb.from("links").delete().eq("id", alvo.id).then(function (r) {
       if (r.error) return toast(erroMsg(r.error), true);
       links = links.filter(function (x) { return x.id !== alvo.id; });
       renderLinks();
       editor.hidden = true; editing = null;
-      toast("Apagado");
       refreshPreview();
+      toast('"' + alvo.titulo + '" apagado', { acao: "Desfazer", ao: function () {
+        var copia = Object.assign({}, alvo); delete copia.criado_em;
+        sb.from("links").insert(copia).select().single().then(function (r2) {
+          if (r2.error) return toast(erroMsg(r2.error), true);
+          links.push(r2.data); links.sort(function (a, b) { return a.ordem - b.ordem; });
+          renderLinks(); refreshPreview(); toast("Restaurado");
+        });
+      } });
+    });
+  });
+
+  $("dupLink").addEventListener("click", function () {
+    if (!editing) return;
+    var copia = Object.assign({}, editing, { titulo: editing.titulo + " (cópia)", ordem: links.length, cliques: 0 });
+    delete copia.id; delete copia.criado_em;
+    sb.from("links").insert(copia).select().single().then(function (r) {
+      if (r.error) return toast(erroMsg(r.error), true);
+      links.push(r.data);
+      renderLinks();
+      editor.hidden = true; editing = null;
+      refreshPreview();
+      toast("Cópia criada no fim da lista");
     });
   });
 
@@ -551,8 +733,8 @@
   $("deleteWa").addEventListener("click", function () {
     if (!editingWa) return;
     var usados = links.filter(function (l) { return l.whatsapp_id === editingWa.id; }).length;
-    var aviso = usados ? "\n\n" + usados + (usados === 1 ? " link aponta" : " links apontam") + " para este número e vão passar a usar o primeiro da lista." : "";
-    if (!confirm('Apagar "' + editingWa.nome + '"?' + aviso)) return;
+    var aviso = usados ? "\n\n" + usados + (usados === 1 ? " link aponta" : " links apontam") + " para esta loja e vão passar a usar a primeira da lista." : "";
+    if (usados && !confirm('Apagar "' + editingWa.nome + '"?' + aviso)) return;
     var alvo = editingWa;
     sb.from("whatsapps").delete().eq("id", alvo.id).then(function (r) {
       if (r.error) return toast(erroMsg(r.error), true);
@@ -560,8 +742,15 @@
       links.forEach(function (l) { if (l.whatsapp_id === alvo.id) l.whatsapp_id = null; });
       renderWa();
       waEditor.hidden = true; editingWa = null;
-      toast("Apagado");
       refreshPreview();
+      toast('"' + alvo.nome + '" apagada', { acao: "Desfazer", ao: function () {
+        var copia = Object.assign({}, alvo); delete copia.criado_em;
+        sb.from("whatsapps").insert(copia).select().single().then(function (r2) {
+          if (r2.error) return toast(erroMsg(r2.error), true);
+          whatsapps.push(r2.data); whatsapps.sort(function (a, b) { return a.ordem - b.ordem; });
+          renderWa(); refreshPreview(); toast("Restaurada");
+        });
+      } });
     });
   });
 
@@ -822,8 +1011,74 @@
       var porLink = contar(cA, "link_id");
       var nomes = {}; links.forEach(function (l) { nomes[l.id] = l.titulo; });
       renderBars("linkBars", porLink, nomes, 8);
+
+      renderInsights(vA, vP, cA, cP, nomes, dias);
+      dashDados = { visitas: vA, cliques: cA, nomes: nomes, dias: dias };
     }).catch(function (err) { toast(erroMsg(err), true); });
   }
+
+  /* ─── Alertas: frases prontas sobre o período ─── */
+  function renderInsights(vA, vP, cA, cP, nomes, dias) {
+    var out = [];
+    var DIAS_N = ["domingo", "segunda", "terça", "quarta", "quinta", "sexta", "sábado"];
+
+    // melhor dia da semana (média por ocorrência do dia)
+    if (vA.length >= 14) {
+      var soma = [0, 0, 0, 0, 0, 0, 0], ocorr = [0, 0, 0, 0, 0, 0, 0], vistos = {};
+      vA.forEach(function (v) { var d = new Date(v.criado_em); soma[d.getDay()]++; var k = d.toDateString(); if (!vistos[k]) { vistos[k] = 1; ocorr[d.getDay()]++; } });
+      var melhor = 0, media = 0;
+      for (var i = 0; i < 7; i++) { var m = ocorr[i] ? soma[i] / ocorr[i] : 0; if (m > media) { media = m; melhor = i; } }
+      out.push({ t: "Seu melhor dia é " + DIAS_N[melhor] + " (média de " + media.toFixed(1).replace(".", ",") + " visitas)", i: "★" });
+    }
+
+    // ontem vs média
+    var ontem = new Date(); ontem.setDate(ontem.getDate() - 1); var kO = ontem.toDateString();
+    var nOntem = vA.filter(function (v) { return new Date(v.criado_em).toDateString() === kO; }).length;
+    var mediaDia = vA.length / dias;
+    if (vA.length >= 7 && mediaDia > 0) {
+      var dif = Math.round((nOntem - mediaDia) / mediaDia * 100);
+      if (dif >= 30) out.push({ t: "Ontem teve " + nOntem + " visitas, " + dif + "% acima da média", i: "▲", c: "is-good" });
+      else if (dif <= -30) out.push({ t: "Ontem teve " + nOntem + " visitas, " + Math.abs(dif) + "% abaixo da média", i: "▼", c: "is-bad" });
+    }
+
+    // links que caíram ou subiram muito vs período anterior
+    var atual = {}, ant = {};
+    cA.forEach(function (c) { atual[c.link_id] = (atual[c.link_id] || 0) + 1; });
+    cP.forEach(function (c) { ant[c.link_id] = (ant[c.link_id] || 0) + 1; });
+    Object.keys(ant).forEach(function (id) {
+      if (ant[id] < 5 || !nomes[id]) return;
+      var d = Math.round(((atual[id] || 0) - ant[id]) / ant[id] * 100);
+      if (d <= -40) out.push({ t: '"' + nomes[id] + '" caiu ' + Math.abs(d) + "% em cliques", i: "▼", c: "is-bad" });
+      else if (d >= 60) out.push({ t: '"' + nomes[id] + '" subiu ' + d + "% em cliques", i: "▲", c: "is-good" });
+    });
+
+    // origem principal
+    var org = contar(vA, "origem");
+    if (org.length && vA.length >= 10) {
+      var nomeO = { instagram: "Instagram", whatsapp: "WhatsApp", facebook: "Facebook", tiktok: "TikTok", google: "Google", direto: "acesso direto", "outro site": "outros sites" };
+      out.push({ t: Math.round(org[0].n / vA.length * 100) + "% chegam pelo " + (nomeO[org[0].k] || org[0].k), i: "◎" });
+    }
+
+    var box = $("insights");
+    box.hidden = !out.length;
+    box.innerHTML = out.slice(0, 5).map(function (o) { return '<span class="insight ' + (o.c || "") + '"><i>' + o.i + "</i>" + esc(o.t) + "</span>"; }).join("");
+  }
+
+  /* ─── Exportar CSV do período ─── */
+  var dashDados = null;
+  $("dashExport").addEventListener("click", function () {
+    if (!dashDados) return toast("Ainda carregando…");
+    var linhas = [["tipo", "data_hora", "visitante", "aparelho", "sistema", "navegador", "cidade", "estado", "pais", "origem", "link"]];
+    dashDados.visitas.forEach(function (v) { linhas.push(["visita", v.criado_em, v.visitante, v.dispositivo, v.sistema, v.navegador, v.cidade, v.estado, v.pais, v.origem, ""]); });
+    dashDados.cliques.forEach(function (c) { linhas.push(["clique", c.criado_em, "", "", "", "", "", "", "", "", dashDados.nomes[c.link_id] || c.link_id]); });
+    var csv = "﻿" + linhas.map(function (l) { return l.map(function (c) { return '"' + String(c == null ? "" : c).replace(/"/g, '""') + '"'; }).join(";"); }).join("\r\n");
+    var a = document.createElement("a");
+    a.href = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
+    a.download = "rayane-store-" + dashDados.dias + "dias-" + new Date().toISOString().slice(0, 10) + ".csv";
+    document.body.appendChild(a); a.click();
+    setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 500);
+    toast("Planilha baixada");
+  });
 
   function setTile(k, valor, delta, dias) {
     document.querySelector('[data-k="' + k + '"]').textContent = valor;
