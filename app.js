@@ -217,6 +217,24 @@
     }
     el.textContent = texto;
     el.hidden = !texto;
+
+    // tabela da semana, abre ao tocar no status
+    var NOMES = ["Domingo", "Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado"];
+    var box = document.getElementById("hours");
+    var linhas = "";
+    for (var d = 1; d <= 7; d++) {
+      var dia = d % 7;
+      var v = h[dia];
+      var cls = (dia === agora.dia ? "is-today" : "") + (v ? "" : " is-closed");
+      var txt = v ? fmt(v[0]) + " às " + fmt(v[1]) + (v[2] && v[3] ? " · almoço " + fmt(v[2]) + "–" + fmt(v[3]) : "") : "fechado";
+      linhas += '<div class="' + cls.trim() + '" style="display:contents"><dt>' + NOMES[dia] + "</dt><dd>" + txt + "</dd></div>";
+    }
+    box.innerHTML = "<dl>" + linhas + "</dl><small>Horário de Cuiabá</small>";
+    el.addEventListener("click", function () {
+      var open = box.hidden;
+      box.hidden = !open;
+      el.setAttribute("aria-expanded", open ? "true" : "false");
+    });
   }
 
   /* ─── Folhas (compartilhar / filiais) ─── */

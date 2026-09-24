@@ -66,7 +66,7 @@ svg { display: block; }
 
 .logo {
   margin: 0 auto;
-  width: min(300px, 78vw);
+  width: min(210px, 56vw);
   transform-origin: 51% 2%;
   animation: hang 1.6s var(--ease-swing) both;
 }
@@ -97,10 +97,46 @@ svg { display: block; }
   align-items: center;
   gap: 8px;
   margin: 14px 0 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
   font-size: 0.8rem;
   letter-spacing: 0.02em;
   color: var(--muted);
+  cursor: pointer;
 }
+.status::after {
+  content: "";
+  width: 6px; height: 6px;
+  margin-left: 2px;
+  border-right: 1.5px solid currentColor;
+  border-bottom: 1.5px solid currentColor;
+  transform: translateY(-2px) rotate(45deg);
+  opacity: .6;
+  transition: transform .25s;
+}
+.status[aria-expanded="true"]::after { transform: translateY(1px) rotate(-135deg); }
+
+/* tabela da semana */
+.hours {
+  max-width: 300px;
+  margin: 10px auto 0;
+  padding: 10px 14px;
+  border: 1px solid var(--plum-line);
+  border-radius: 12px;
+  background: var(--paper);
+  font-size: .82rem;
+  text-align: left;
+  animation: drop .35s var(--ease-swing);
+}
+.hours[hidden] { display: none; }
+.hours dl { display: grid; grid-template-columns: auto 1fr; gap: 4px 14px; margin: 0; }
+.hours dt { color: var(--muted); }
+.hours dd { margin: 0; color: var(--ink); }
+.hours .is-today dt, .hours .is-today dd { color: var(--plum); font-weight: 500; }
+.hours .is-closed dd { color: var(--muted); font-style: italic; }
+.hours small { display: block; margin-top: 8px; color: var(--muted); font-size: .72rem; }
 .status::before {
   content: "";
   width: 7px; height: 7px;
