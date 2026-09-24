@@ -207,6 +207,7 @@
     document.querySelectorAll("#nav button").forEach(function (x) { x.classList.toggle("is-active", x === b); });
     document.querySelectorAll(".panel").forEach(function (p) { p.classList.toggle("is-active", p.dataset.panel === b.dataset.tab); });
     if (b.dataset.tab === "acessos" && !acessos.length) loadAcessos();
+    if (b.dataset.tab === "dash") { dashCache = {}; loadDash(); }
   });
 
   /* ═══════════ Carregar dados ═══════════ */
@@ -227,6 +228,7 @@
       fillPerfil();
       renderRedes();
       renderHorario();
+      loadDash();
     });
   }
 
@@ -758,6 +760,142 @@
       }).catch(function (err) { toast(erroMsg(err), true); })
       .finally(function () { busy(btn, false); });
   });
+
+  /* ═══════════ Visão geral (dashboard) ═══════════ */
+
+  var dashCache = {};
+
+  function saudacao() {
+    var h = new Date().getHours();
+    var s = h < 12 ? "Bom dia" : h < 18 ? "Boa tarde" : "Boa noite";
+    $("dashHello").textContent = s + (conf.nome ? ", " + conf.nome : "");
+    $("dashDate").textContent = new Date().toLocaleDateString("pt-BR", { weekday: "long", day: "numeric", month: "long" });
+    var url = conf.url || location.href.replace(/admin\.html.*$/, "");
+    $("dashUrl").textContent = url;
+    $("dashOpen").href = url;
+  }
+
+  $("dashCopy").addEventListener("click", function () {
+    var url = $("dashUrl").textContent;
+    (navigator.clipboard ? navigator.clipboard.writeText(url) : Promise.reject()).then(function () { toast("Link copiado"); }, function () { toast(url); });
+  });
+
+  $("dashPeriod").addEventListener("change", function () { loadDash(); });
+
+  function fmtNum(n) { return n.toLocaleString("pt-BR"); }
+  function pct(a, b) { return b ? Math.round((a - b) / b * 100) : null; }
+
+  function loadDash() {
+    saudacao();
+    var dias = +document.querySelector("#dashPeriod input:checked").value;
+    var agora = new Date();
+    var inicio = new Date(agora); inicio.setDate(inicio.getDate() - dias + 1); inicio.setHours(0, 0, 0, 0);
+    var anterior = new Date(inicio); anterior.setDate(anterior.getDate() - dias);
+    var chave = dias + ":" + inicio.toDateString();
+
+    var p = dashCache[chave] || Promise.all([
+      sb.from("visitas").select("visitante,criado_em,dispositivo,sistema,navegador,cidade,estado,pais,origem").gte("criado_em", anterior.toISOString()).order("criado_em").limit(20000),
+      sb.from("cliques").select("link_id,criado_em").gte("criado_em", anterior.toISOString()).limit(20000),
+    ]);
+    dashCache[chave] = p;
+
+    p.then(function (res) {
+      var visitas = res[0].data || [], cliques = res[1].data || [];
+      var atual = function (r) { return new Date(r.criado_em) >= inicio; };
+      var vA = visitas.filter(atual), vP = visitas.filter(function (r) { return !atual(r); });
+      var cA = cliques.filter(atual), cP = cliques.filter(function (r) { return !atual(r); });
+      var unicos = function (arr) { var s = {}; arr.forEach(function (r) { s[r.visitante] = 1; }); return Object.keys(s).length; };
+
+      $("dashEmpty").hidden = visitas.length > 0 || cliques.length > 0;
+
+      setTile("unicos", fmtNum(unicos(vA)), pct(unicos(vA), unicos(vP)), dias);
+      setTile("visitas", fmtNum(vA.length), pct(vA.length, vP.length), dias);
+      setTile("cliques", fmtNum(cA.length), pct(cA.length, cP.length), dias);
+      document.querySelector('[data-k="taxa"]').textContent = vA.length ? (cA.length / vA.length).toFixed(1).replace(".", ",") : "–";
+
+      renderChart(vA, inicio, dias);
+      renderBars("devBars", contar(vA, "dispositivo"), { celular: "Celular", computador: "Computador", tablet: "Tablet" });
+      renderBars("srcBars", contar(vA, "origem"), { instagram: "Instagram", whatsapp: "WhatsApp", facebook: "Facebook", tiktok: "TikTok", google: "Google", direto: "Direto (link digitado ou salvo)", "outro site": "Outro site" });
+      renderBars("geoBars", contar(vA, function (r) { return r.cidade ? r.cidade + " · " + r.estado : (r.pais ? r.pais : "Não identificado"); }), {}, 8);
+      renderBars("uaBars", contar(vA, function (r) { return (r.sistema || "?") + " · " + (r.navegador || "?"); }), {}, 6);
+
+      var porLink = contar(cA, "link_id");
+      var nomes = {}; links.forEach(function (l) { nomes[l.id] = l.titulo; });
+      renderBars("linkBars", porLink, nomes, 8);
+    }).catch(function (err) { toast(erroMsg(err), true); });
+  }
+
+  function setTile(k, valor, delta, dias) {
+    document.querySelector('[data-k="' + k + '"]').textContent = valor;
+    var el = document.querySelector('[data-k="' + k + 'Delta"]');
+    el.className = "tile__delta" + (delta > 0 ? " is-up" : delta < 0 ? " is-down" : "");
+    el.textContent = delta == null ? "sem base de comparação" : (delta > 0 ? "▲ " : delta < 0 ? "▼ " : "= ") + Math.abs(delta) + "% vs. " + dias + " dias antes";
+  }
+
+  function contar(arr, campo) {
+    var m = {};
+    arr.forEach(function (r) { var k = typeof campo === "function" ? campo(r) : (r[campo] || "?"); m[k] = (m[k] || 0) + 1; });
+    return Object.keys(m).map(function (k) { return { k: k, n: m[k] }; }).sort(function (a, b) { return b.n - a.n; });
+  }
+
+  function renderBars(id, itens, nomes, max) {
+    var box = $(id);
+    if (!itens.length) { box.innerHTML = '<p class="empty">Sem dados no período.</p>'; return; }
+    var total = itens.reduce(function (s, i) { return s + i.n; }, 0);
+    var top = itens.slice(0, max || 6);
+    box.innerHTML = top.map(function (i) {
+      var p = Math.round(i.n / total * 100);
+      return '<div class="bar"><span class="bar__label">' + esc(nomes[i.k] || i.k) + '</span><span class="bar__value">' + fmtNum(i.n) + " · " + p + '%</span>' +
+        '<span class="bar__track"><span class="bar__fill" data-w="' + p + '"></span></span></div>';
+    }).join("");
+    requestAnimationFrame(function () { box.querySelectorAll(".bar__fill").forEach(function (f) { f.style.width = f.dataset.w + "%"; }); });
+  }
+
+  // colunas por dia: <=24px de largura, topo arredondado, tooltip ao passar
+  function renderChart(visitas, inicio, dias) {
+    var porDia = {};
+    for (var i = 0; i < dias; i++) { var d = new Date(inicio); d.setDate(d.getDate() + i); porDia[d.toDateString()] = { d: d, n: 0, u: {} }; }
+    visitas.forEach(function (v) { var k = new Date(v.criado_em).toDateString(); if (porDia[k]) { porDia[k].n++; porDia[k].u[v.visitante] = 1; } });
+    var serie = Object.keys(porDia).map(function (k) { return porDia[k]; });
+    var maxN = Math.max(1, Math.max.apply(null, serie.map(function (s) { return s.n; })));
+    var teto = maxN <= 5 ? 5 : Math.ceil(maxN / 5) * 5;
+    $("chartSub").textContent = fmtNum(visitas.length) + " visitas · pico de " + maxN + " num dia";
+
+    var W = 600, H = 180, L = 28, B = 22, T = 8;
+    var slot = (W - L) / dias, bw = Math.min(24, slot * .7);
+    var y = function (n) { return T + (H - T - B) * (1 - n / teto); };
+    var svg = '<svg viewBox="0 0 ' + W + " " + H + '" preserveAspectRatio="none">';
+    [0, .5, 1].forEach(function (f) {
+      var v = Math.round(teto * f), yy = y(v);
+      svg += '<line class="grid" x1="' + L + '" x2="' + W + '" y1="' + yy + '" y2="' + yy + '"/><text class="axis" x="' + (L - 6) + '" y="' + (yy + 3) + '" text-anchor="end">' + v + "</text>";
+    });
+    serie.forEach(function (s, i) {
+      var x = L + slot * i + (slot - bw) / 2, top = y(s.n), h = Math.max(0, y(0) - top);
+      var r = Math.min(4, bw / 2, h);
+      var path = h > 0 ? "M" + x + " " + y(0) + "v-" + (h - r) + "a" + r + " " + r + " 0 0 1 " + r + " -" + r + "h" + (bw - 2 * r) + "a" + r + " " + r + " 0 0 1 " + r + " " + r + "v" + (h - r) + "z" : "";
+      svg += '<path class="col" d="' + path + '"/>';
+      svg += '<rect class="hit" x="' + (L + slot * i) + '" y="' + T + '" width="' + slot + '" height="' + (H - T) + '" data-i="' + i + '"/>';
+      var passo = dias <= 7 ? 1 : dias <= 30 ? 5 : 15;
+      if (i % passo === 0 || i === dias - 1) svg += '<text class="axis" x="' + (x + bw / 2) + '" y="' + (H - 6) + '" text-anchor="middle">' + s.d.getDate() + "/" + (s.d.getMonth() + 1) + "</text>";
+    });
+    svg += "</svg>";
+    var box = $("chart");
+    box.innerHTML = svg;
+
+    var tip = $("chartTip");
+    box.onmousemove = function (e) {
+      var hit = e.target.closest(".hit");
+      if (!hit) { tip.hidden = true; box.querySelectorAll(".col.is-dim").forEach(function (c) { c.classList.remove("is-dim"); }); return; }
+      var s = serie[+hit.dataset.i];
+      tip.hidden = false;
+      tip.innerHTML = "<b>" + s.d.toLocaleDateString("pt-BR", { weekday: "short", day: "numeric", month: "short" }) + "</b> · " + s.n + (s.n === 1 ? " visita" : " visitas") + " · " + Object.keys(s.u).length + " únicos";
+      var r = box.getBoundingClientRect(), hr = hit.getBoundingClientRect();
+      tip.style.left = (hr.left - r.left + hr.width / 2) + "px";
+      tip.style.top = (hr.top - r.top + (hr.height * (1 - s.n / teto)) * ((H - T - B) / (H - T))) + "px";
+      box.querySelectorAll(".col").forEach(function (c, i) { c.classList.toggle("is-dim", i !== +hit.dataset.i); });
+    };
+    box.onmouseleave = function () { tip.hidden = true; box.querySelectorAll(".col.is-dim").forEach(function (c) { c.classList.remove("is-dim"); }); };
+  }
 
   /* ═══════════ Acessos ═══════════ */
 

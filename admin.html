@@ -35,7 +35,10 @@
         <span>Painel</span>
       </div>
       <nav class="side__nav" id="nav">
-        <button class="is-active" data-tab="links">
+        <button class="is-active" data-tab="dash">
+          <svg viewBox="0 0 24 24"><path d="M4 19V10M10 19V5M16 19v-8M22 19H2"/></svg>Visão geral
+        </button>
+        <button data-tab="links">
           <svg viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h10"/></svg>Links
         </button>
         <button data-tab="whatsapp">
@@ -64,8 +67,54 @@
 
     <main class="work">
 
+      <!-- ── Visão geral ── -->
+      <section class="panel is-active" data-panel="dash">
+        <header class="panel__head">
+          <div>
+            <h1 id="dashHello">Visão geral</h1>
+            <p id="dashDate"></p>
+          </div>
+          <div class="seg seg--sm" id="dashPeriod">
+            <label><input type="radio" name="periodo" value="7" /><span>7 dias</span></label>
+            <label><input type="radio" name="periodo" value="30" checked /><span>30 dias</span></label>
+            <label><input type="radio" name="periodo" value="90" /><span>90 dias</span></label>
+          </div>
+        </header>
+
+        <div class="tiles" id="tiles">
+          <div class="tile tile--hero"><span class="tile__label">Visitantes únicos</span><strong class="tile__value" data-k="unicos">–</strong><span class="tile__delta" data-k="unicosDelta"></span></div>
+          <div class="tile"><span class="tile__label">Visitas</span><strong class="tile__value" data-k="visitas">–</strong><span class="tile__delta" data-k="visitasDelta"></span></div>
+          <div class="tile"><span class="tile__label">Cliques em links</span><strong class="tile__value" data-k="cliques">–</strong><span class="tile__delta" data-k="cliquesDelta"></span></div>
+          <div class="tile"><span class="tile__label">Cliques por visita</span><strong class="tile__value" data-k="taxa">–</strong><span class="tile__hint">quantos links cada visita abre</span></div>
+        </div>
+
+        <div class="card card--chart">
+          <div class="card__head"><h2>Visitas por dia</h2><span class="card__sub" id="chartSub"></span></div>
+          <div class="chart" id="chart"></div>
+          <div class="chart__tip" id="chartTip" hidden></div>
+        </div>
+
+        <div class="cards">
+          <div class="card"><div class="card__head"><h2>Aparelhos</h2></div><div class="bars" id="devBars"></div></div>
+          <div class="card"><div class="card__head"><h2>Como chegaram</h2></div><div class="bars" id="srcBars"></div></div>
+          <div class="card"><div class="card__head"><h2>De onde acessam</h2><span class="card__sub">cidade · estado</span></div><div class="bars" id="geoBars"></div></div>
+          <div class="card"><div class="card__head"><h2>Links mais clicados</h2></div><div class="bars" id="linkBars"></div></div>
+          <div class="card"><div class="card__head"><h2>Sistema e navegador</h2></div><div class="bars" id="uaBars"></div></div>
+          <div class="card card--share">
+            <div class="card__head"><h2>Divulgar</h2></div>
+            <p class="form__hint" id="dashUrl"></p>
+            <div class="card__actions">
+              <button class="btn" type="button" id="dashCopy">Copiar link da página</button>
+              <a class="btn" id="dashOpen" target="_blank" rel="noopener">Abrir página</a>
+            </div>
+          </div>
+        </div>
+
+        <p class="empty" id="dashEmpty" hidden>A medição começou agora. Assim que alguém abrir a página, os números aparecem aqui.</p>
+      </section>
+
       <!-- ── Links ── -->
-      <section class="panel is-active" data-panel="links">
+      <section class="panel" data-panel="links">
         <header class="panel__head">
           <div>
             <h1>Links</h1>

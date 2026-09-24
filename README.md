@@ -12,6 +12,7 @@ Os dados ficam no Supabase (projeto "Bio Instagran"). A página pública lê de 
 
 | Aba | O que controla |
 |---|---|
+| **Visão geral** | Painel de medição: visitantes únicos, visitas, cliques e cliques por visita (com comparação ao período anterior), gráfico de visitas por dia, aparelhos, origem do acesso (Instagram, WhatsApp…), cidades/estados, sistema e navegador, links mais clicados. Períodos de 7, 30 e 90 dias. |
 | **Links** | Criar, editar, apagar e reordenar (arrastando) os botões. Ligar/desligar sem apagar. Cada link vai para um endereço, para o WhatsApp (uma loja ou o cliente escolhe) ou para "Como chegar" (mapa das lojas). Botão em destaque, selo ("Novo"), ícone, subtítulo, agendamento (o link aparece só num período). Contagem de cliques. |
 | **Lojas** | Uma linha por loja: nome, WhatsApp, endereço, link do Google Maps (opcional) e mensagem que já chega escrita. Com mais de uma loja, o ícone de WhatsApp e os links "Como chegar" abrem uma lista para o cliente escolher a loja. |
 | **Perfil** | Nome, frase da bio, logo (envia uma imagem), endereço da página publicada (usado no QR code). |
@@ -68,6 +69,8 @@ assets/vendor/                     supabase-js (MIT) e qrcode-generator (MIT)
 | `redes` | ícones de redes sociais |
 | `links` | botões e títulos de seção, com ordem, destino (URL ou WhatsApp), agendamento e cliques |
 | `admins` | quem pode editar |
+| `visitas` | uma linha por visita (1 por visitante por dia): aparelho, sistema, navegador, cidade/estado aproximados, origem. Sem IP e sem nome. |
+| `cliques` | um registro por clique em link, com data |
 
 Horário: por dia, `[abre, fecha]` ou `[abre, fecha, almocoInicio, almocoFim]`; `null` = fechado.
 

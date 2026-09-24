@@ -151,13 +151,69 @@
     // contagem de cliques (não atrasa a abertura do link)
     list.addEventListener("click", function (e) {
       var a = e.target.closest("a[data-id]");
-      if (a) sb.rpc("registrar_clique", { link_id: a.dataset.id }).then(function () {});
+      if (a) sb.rpc("registrar_clique", { link_id: a.dataset.id, visitante: visitanteId() }).then(function () {});
     });
 
     renderStatus();
     setupFiliais();
     setupShare();
     setupEfeitos();
+    registrarVisita();
+  }
+
+  /* ─── Medição anônima de visitas ───
+     Não guarda IP nem nome: só um id aleatório do navegador, o tipo de
+     aparelho, cidade/estado (por aproximação) e de onde a pessoa veio. */
+  function visitanteId() {
+    try {
+      var id = localStorage.getItem("rs_visitante");
+      if (!id) {
+        id = (window.crypto && crypto.randomUUID) ? crypto.randomUUID() : String(Date.now()) + Math.random().toString(16).slice(2);
+        localStorage.setItem("rs_visitante", id);
+      }
+      return id;
+    } catch (e) { return "anon"; }
+  }
+
+  function registrarVisita() {
+    var hoje = new Date().toISOString().slice(0, 10);
+    try { if (localStorage.getItem("rs_ultima_visita") === hoje) return; } catch (e) {}
+    if (/bot|crawl|spider|preview|facebookexternalhit|WhatsApp\//i.test(navigator.userAgent)) return;
+
+    var ua = navigator.userAgent;
+    var dispositivo = /iPad|Tablet|PlayBook|Silk/i.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1) ? "tablet"
+      : /Mobi|Android|iPhone/i.test(ua) ? "celular" : "computador";
+    var sistema = /iPhone|iPad|iPod/.test(ua) ? "iOS" : /Android/.test(ua) ? "Android" : /Windows/.test(ua) ? "Windows"
+      : /Macintosh/.test(ua) ? "macOS" : /Linux/.test(ua) ? "Linux" : "outro";
+    var navegador = /Instagram/.test(ua) ? "Instagram (app)" : /FBAN|FBAV/.test(ua) ? "Facebook (app)" : /TikTok/i.test(ua) ? "TikTok (app)"
+      : /EdgA?\//.test(ua) ? "Edge" : /SamsungBrowser/.test(ua) ? "Samsung" : /OPR\//.test(ua) ? "Opera" : /Firefox/.test(ua) ? "Firefox"
+      : /Chrome|CriOS/.test(ua) ? "Chrome" : /Safari/.test(ua) ? "Safari" : "outro";
+
+    var ref = "";
+    try { ref = document.referrer ? new URL(document.referrer).hostname : ""; } catch (e) {}
+    var origem = /instagram/.test(ref) || /Instagram/.test(ua) ? "instagram" : /whatsapp/.test(ref) ? "whatsapp"
+      : /facebook|fb\./.test(ref) || /FBAN|FBAV/.test(ua) ? "facebook" : /tiktok/i.test(ref + ua) ? "tiktok"
+      : /google/.test(ref) ? "google" : ref ? "outro site" : "direto";
+
+    var dados = {
+      visitante: visitanteId(), dispositivo: dispositivo, sistema: sistema, navegador: navegador,
+      origem: origem, idioma: (navigator.language || "").slice(0, 5), largura: window.innerWidth,
+      cidade: "", estado: "", pais: "",
+    };
+
+    // localização aproximada (cidade/estado) por um serviço gratuito; se falhar, segue sem
+    var ctrl = typeof AbortController !== "undefined" ? new AbortController() : null;
+    var timer = setTimeout(function () { if (ctrl) ctrl.abort(); }, 2500);
+    fetch("https://get.geojs.io/v1/ip/geo.json", { signal: ctrl && ctrl.signal })
+      .then(function (r) { return r.json(); })
+      .then(function (g) { dados.cidade = g.city || ""; dados.estado = g.region || ""; dados.pais = g.country || ""; })
+      .catch(function () {})
+      .then(function () {
+        clearTimeout(timer);
+        return sb.from("visitas").insert(dados);
+      })
+      .then(function () { try { localStorage.setItem("rs_ultima_visita", hoje); } catch (e) {} })
+      .catch(function () {});
   }
 
   /* ─── Efeitos: ondulação ao tocar e inclinação 3D no computador ─── */
