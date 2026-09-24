@@ -219,16 +219,29 @@
     el.hidden = !texto;
 
     // tabela da semana, abre ao tocar no status
-    var NOMES = ["Domingo", "Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado"];
+    var NOMES = ["domingo", "segunda", "terça", "quarta", "quinta", "sexta", "sábado"];
     var box = document.getElementById("hours");
-    var linhas = "";
+
+    // agrupa dias seguidos com o mesmo horário: "segunda a sexta", "sábado", "domingo"
+    var grupos = [];
     for (var d = 1; d <= 7; d++) {
       var dia = d % 7;
-      var v = h[dia];
-      var cls = (dia === agora.dia ? "is-today" : "") + (v ? "" : " is-closed");
-      var txt = v ? fmt(v[0]) + " às " + fmt(v[1]) + (v[2] && v[3] ? " · almoço " + fmt(v[2]) + "–" + fmt(v[3]) : "") : "fechado";
-      linhas += '<div class="' + cls.trim() + '" style="display:contents"><dt>' + NOMES[dia] + "</dt><dd>" + txt + "</dd></div>";
+      var chave = JSON.stringify(h[dia] || null);
+      var ultimo = grupos[grupos.length - 1];
+      if (ultimo && ultimo.chave === chave) ultimo.dias.push(dia);
+      else grupos.push({ chave: chave, v: h[dia], dias: [dia] });
     }
+    function rotulo(dias) {
+      var a = NOMES[dias[0]], b = NOMES[dias[dias.length - 1]];
+      var t = dias.length === 1 ? a : dias.length === 2 ? a + " e " + b : a + " a " + b;
+      return t.charAt(0).toUpperCase() + t.slice(1);
+    }
+    var linhas = grupos.map(function (g) {
+      var v = g.v;
+      var cls = (g.dias.indexOf(agora.dia) >= 0 ? "is-today" : "") + (v ? "" : " is-closed");
+      var txt = v ? fmt(v[0]) + " às " + fmt(v[1]) + (v[2] && v[3] ? " · almoço " + fmt(v[2]) + "–" + fmt(v[3]) : "") : "fechado";
+      return '<div class="' + cls.trim() + '" style="display:contents"><dt>' + rotulo(g.dias) + "</dt><dd>" + txt + "</dd></div>";
+    }).join("");
     box.innerHTML = "<dl>" + linhas + "</dl><small>Horário de Cuiabá</small>";
     el.addEventListener("click", function () {
       var open = box.hidden;
