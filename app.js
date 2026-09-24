@@ -184,8 +184,8 @@
     var rack = document.querySelector(".rack");
     var alvo = { x: 0, y: 0 }, atual = { x: 0, y: 0 }, raf = null;
     function anima() {
-      atual.x += (alvo.x - atual.x) * .08;
-      atual.y += (alvo.y - atual.y) * .08;
+      atual.x += (alvo.x - atual.x) * .16;
+      atual.y += (alvo.y - atual.y) * .16;
       rack.style.transform = "perspective(1100px) rotateX(" + atual.x.toFixed(2) + "deg) rotateY(" + atual.y.toFixed(2) + "deg)";
       raf = (Math.abs(alvo.x - atual.x) > .01 || Math.abs(alvo.y - atual.y) > .01) ? requestAnimationFrame(anima) : null;
     }
@@ -193,8 +193,8 @@
       var r = rack.getBoundingClientRect();
       var px = (e.clientX - (r.left + r.width / 2)) / r.width;
       var py = (e.clientY - (r.top + r.height / 2)) / r.height;
-      alvo.y = px * 4;
-      alvo.x = -py * 3;
+      alvo.y = px * 2.2;
+      alvo.x = -py * 1.6;
       if (!raf) raf = requestAnimationFrame(anima);
     });
     document.addEventListener("pointerleave", function () { alvo.x = alvo.y = 0; if (!raf) raf = requestAnimationFrame(anima); });
