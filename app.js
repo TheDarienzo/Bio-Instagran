@@ -157,6 +157,47 @@
     renderStatus();
     setupFiliais();
     setupShare();
+    setupEfeitos();
+  }
+
+  /* ─── Efeitos: ondulação ao tocar e inclinação 3D no computador ─── */
+  function setupEfeitos() {
+    var reduz = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (reduz) return;
+
+    document.getElementById("links").addEventListener("pointerdown", function (e) {
+      var a = e.target.closest("a.tag");
+      if (!a) return;
+      var r = a.getBoundingClientRect();
+      var tam = Math.max(r.width, r.height) * 1.6;
+      var s = document.createElement("span");
+      s.className = "ripple";
+      s.style.width = s.style.height = tam + "px";
+      s.style.left = (e.clientX - r.left - tam / 2) + "px";
+      s.style.top = (e.clientY - r.top - tam / 2) + "px";
+      a.appendChild(s);
+      setTimeout(function () { s.remove(); }, 650);
+    });
+
+    // só com mouse (no toque não faz sentido)
+    if (!window.matchMedia("(hover: hover) and (pointer: fine)").matches) return;
+    var rack = document.querySelector(".rack");
+    var alvo = { x: 0, y: 0 }, atual = { x: 0, y: 0 }, raf = null;
+    function anima() {
+      atual.x += (alvo.x - atual.x) * .08;
+      atual.y += (alvo.y - atual.y) * .08;
+      rack.style.transform = "perspective(1100px) rotateX(" + atual.x.toFixed(2) + "deg) rotateY(" + atual.y.toFixed(2) + "deg)";
+      raf = (Math.abs(alvo.x - atual.x) > .01 || Math.abs(alvo.y - atual.y) > .01) ? requestAnimationFrame(anima) : null;
+    }
+    document.addEventListener("pointermove", function (e) {
+      var r = rack.getBoundingClientRect();
+      var px = (e.clientX - (r.left + r.width / 2)) / r.width;
+      var py = (e.clientY - (r.top + r.height / 2)) / r.height;
+      alvo.y = px * 4;
+      alvo.x = -py * 3;
+      if (!raf) raf = requestAnimationFrame(anima);
+    });
+    document.addEventListener("pointerleave", function () { alvo.x = alvo.y = 0; if (!raf) raf = requestAnimationFrame(anima); });
   }
 
   /* ─── Horário de atendimento ─── */
