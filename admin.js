@@ -410,7 +410,7 @@
     if (!l.url || !/^https?:/i.test(l.url)) return "";
     try {
       var host = new URL(l.url).hostname;
-      return '<img class="row__fav" alt="" src="https://www.google.com/s2/favicons?domain=' + esc(host) + '&sz=32" onerror="this.remove()">';
+      return '<img class="row__fav" alt="" src="https://www.google.com/s2/favicons?domain=' + esc(host) + '&sz=32">';
     } catch (e) { return ""; }
   }
 
@@ -449,6 +449,9 @@
       linkRows.appendChild(li);
     });
   }
+
+  // favicon que não carregou some (sem onerror inline, por causa do CSP)
+  linkRows.addEventListener("error", function (e) { if (e.target.classList && e.target.classList.contains("row__fav")) e.target.remove(); }, true);
 
   linkRows.addEventListener("click", function (e) {
     var b = e.target.closest("[data-top]");

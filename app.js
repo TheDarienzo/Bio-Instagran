@@ -59,10 +59,11 @@
 
   /* ─── Carrega tudo ─── */
   Promise.all([
-    sb.from("configuracoes").select("*").eq("id", 1).maybeSingle(),
-    sb.from("redes").select("*").eq("ativo", true).order("ordem"),
-    sb.from("links").select("*").eq("ativo", true).order("ordem"),
-    sb.from("whatsapps").select("*").eq("ativo", true).order("ordem"),
+    sb.from("configuracoes").select("nome,bio,url,logo_url,horario").eq("id", 1).maybeSingle(),
+    sb.from("redes").select("tipo,url").eq("ativo", true).order("ordem"),
+    // só as colunas que a página usa (o contador de cliques fica fora do alcance público)
+    sb.from("links").select("id,tipo,titulo,subtitulo,url,icone,destaque,selo,inicio,fim,whatsapp_id,whatsapp_mensagem,whatsapp_todos,mapa").eq("ativo", true).order("ordem"),
+    sb.from("whatsapps").select("id,nome,numero,endereco,mensagem,mapa_url").eq("ativo", true).order("ordem"),
   ]).then(function (res) {
     conf = res[0].data || {};
     whatsapps = (res[3].data || []).filter(function (w) { return digits(w.numero) || w.endereco || w.mapa_url; });
