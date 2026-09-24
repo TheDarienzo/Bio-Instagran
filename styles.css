@@ -82,14 +82,13 @@ svg { display: block; }
 
 .bio {
   margin: 6px auto 0;
-  max-width: 30ch;
-  font-family: var(--display);
-  font-style: italic;
-  font-weight: 350;
-  font-size: 1.12rem;
-  line-height: 1.35;
-  font-variation-settings: "SOFT" 100, "opsz" 24;
-  color: var(--ink);
+  max-width: 32ch;
+  font-family: var(--body);
+  font-weight: 400;
+  font-size: 1rem;
+  line-height: 1.5;
+  letter-spacing: .01em;
+  color: #4a3550;
 }
 
 .status {
