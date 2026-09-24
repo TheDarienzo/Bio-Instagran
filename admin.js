@@ -202,6 +202,31 @@
     else showGate();
   });
 
+  /* ═══════════ Tema: automático → claro → escuro ═══════════ */
+
+  var ORDEM_TEMA = ["auto", "light", "dark"];
+  var NOME_TEMA = { auto: "Tema automático", light: "Tema claro", dark: "Tema escuro" };
+  var mediaEscuro = window.matchMedia("(prefers-color-scheme: dark)");
+
+  function aplicarTema(pref) {
+    var escuro = pref === "dark" || (pref === "auto" && mediaEscuro.matches);
+    document.documentElement.setAttribute("data-theme", escuro ? "dark" : "light");
+    document.documentElement.setAttribute("data-theme-pref", pref);
+    $("themeLabel").textContent = NOME_TEMA[pref];
+    var meta = document.querySelector('meta[name="theme-color"]');
+    if (meta) meta.content = escuro ? "#1b1220" : "#F6EFEA";
+  }
+  function temaAtual() { try { return localStorage.getItem("rs_tema") || "auto"; } catch (e) { return "auto"; } }
+  aplicarTema(temaAtual());
+  mediaEscuro.addEventListener("change", function () { if (temaAtual() === "auto") aplicarTema("auto"); });
+
+  $("themeBtn").addEventListener("click", function () {
+    var prox = ORDEM_TEMA[(ORDEM_TEMA.indexOf(temaAtual()) + 1) % ORDEM_TEMA.length];
+    try { localStorage.setItem("rs_tema", prox); } catch (e) {}
+    aplicarTema(prox);
+    toast(NOME_TEMA[prox] + (prox === "auto" ? " (segue o aparelho)" : ""));
+  });
+
   /* ═══════════ Atalhos: Ctrl+K (busca) e Ctrl+S (salvar) ═══════════ */
 
   var palette = $("palette"), paletteInput = $("paletteInput"), paletteList = $("paletteList");

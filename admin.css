@@ -38,9 +38,8 @@
   color-scheme: light;
 }
 
-/* tema escuro: segue o sistema do aparelho */
-@media (prefers-color-scheme: dark) {
-  :root {
+/* tema escuro: ligado pelo atributo data-theme (o JS decide: automático, claro ou escuro) */
+html[data-theme="dark"] {
     --plum: #c56bd0;
     --plum-deep: #9a3fa6;
     --plum-line: rgba(197, 107, 208, .3);
@@ -58,21 +57,19 @@
     --shadow: 0 10px 30px -14px rgba(0, 0, 0, .6);
     color-scheme: dark;
   }
-  .tile--hero { background: linear-gradient(135deg, #6f1f76, #942c9d 60%, #b7359a); }
-  .side__nav button.is-active { background: #942c9d; color: #fff; }
-  .btn--primary { background: #942c9d; border-color: #942c9d; color: #fff; }
-  .btn--primary:hover { background: #7a2482; }
-  .row__badge, .tag__badge { background: #942c9d; }
-  .switch span { background: #4a3a50; }
-  .switch input:checked + span { background: #b04fbd; }
-  .form input:not([type="checkbox"]):not([type="radio"]), .form textarea, .form select,
-  .rows--redes .row input[type="text"], .form .rows--dias .row input[type="time"] { background: #1f1526; color: var(--ink); border-color: var(--line); }
-  .seg { background: #1f1526; }
-  .seg input:checked + span { background: var(--paper); }
-  .chart__tip { background: #f1e6f2; color: #1b1220; }
-  .toast { background: #f1e6f2; color: #1b1220; }
-  .logo-field__preview img, .side__brand img, .gate__logo { filter: brightness(1.25) saturate(.9); }
-}
+html[data-theme="dark"] .tile--hero { background: linear-gradient(135deg, #6f1f76, #942c9d 60%, #b7359a); }
+html[data-theme="dark"] .side__nav button.is-active { background: #942c9d; color: #fff; }
+html[data-theme="dark"] .btn--primary { background: #942c9d; border-color: #942c9d; color: #fff; }
+html[data-theme="dark"] .btn--primary:hover { background: #7a2482; }
+html[data-theme="dark"] .row__badge, html[data-theme="dark"] .tag__badge { background: #942c9d; }
+html[data-theme="dark"] .switch span { background: #4a3a50; }
+html[data-theme="dark"] .switch input:checked + span { background: #b04fbd; }
+html[data-theme="dark"] .form input:not([type="checkbox"]):not([type="radio"]), html[data-theme="dark"] .form textarea, html[data-theme="dark"] .form select, html[data-theme="dark"] .rows--redes .row input[type="text"], html[data-theme="dark"] .form .rows--dias .row input[type="time"] { background: #1f1526; color: var(--ink); border-color: var(--line); }
+html[data-theme="dark"] .seg { background: #1f1526; }
+html[data-theme="dark"] .seg input:checked + span { background: var(--paper); }
+html[data-theme="dark"] .chart__tip { background: #f1e6f2; color: #1b1220; }
+html[data-theme="dark"] .toast { background: #f1e6f2; color: #1b1220; }
+html[data-theme="dark"] .logo-field__preview img, html[data-theme="dark"] .side__brand img, html[data-theme="dark"] .gate__logo { filter: brightness(1.25) saturate(.9); }
 
 * { box-sizing: border-box; }
 html { -webkit-text-size-adjust: 100%; }
@@ -225,6 +222,22 @@ button { font: inherit; color: inherit; }
   backdrop-filter: blur(18px);
   position: sticky; top: 0; height: 100dvh;
 }
+/* seletor de tema: automático → claro → escuro */
+.side__theme {
+  display: flex; align-items: center; gap: 8px;
+  width: 100%; padding: 8px 10px;
+  border: 1px solid var(--line); border-radius: 10px;
+  background: var(--paper); color: var(--muted);
+  font-size: .85rem; cursor: pointer;
+  transition: border-color .2s, color .2s;
+}
+.side__theme:hover { border-color: var(--plum-line); color: var(--ink); }
+.side__theme svg { width: 15px; height: 15px; display: none; }
+html[data-theme-pref="auto"] .side__theme .ico-auto,
+html[data-theme-pref="light"] .side__theme .ico-light,
+html[data-theme-pref="dark"] .side__theme .ico-dark { display: block; }
+.side__theme span { flex: 1; text-align: left; }
+
 .side__search {
   display: flex; align-items: center; gap: 8px;
   width: 100%; padding: 8px 10px;
@@ -652,8 +665,8 @@ kbd, .kbd-inline {
   .side__nav button { padding: 8px 10px; font-size: .88rem; white-space: nowrap; }
   .side__nav button svg { display: none; }
   .side__foot { margin: 0; padding: 0; display: flex; align-items: center; gap: 10px; flex: none; }
-  .side__search { width: 34px; height: 34px; padding: 0; justify-content: center; border-radius: 50%; }
-  .side__search span, .side__search kbd { display: none; }
+  .side__search, .side__theme { width: 34px; height: 34px; padding: 0; justify-content: center; border-radius: 50%; }
+  .side__search span, .side__search kbd, .side__theme span { display: none; }
   /* no celular, "Ver página" e "Sair" viram só ícones */
   .side__view { font-size: 0; width: 34px; height: 34px; display: grid; place-items: center; border: 1px solid var(--plum-line); border-radius: 50%; }
   .side__view svg { width: 15px; height: 15px; }

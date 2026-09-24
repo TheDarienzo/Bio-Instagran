@@ -8,6 +8,16 @@
   <meta name="theme-color" content="#F6EFEA" />
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cpath fill='%23942C9D' d='M16 28s-11-6.6-11-14.2C5 9.4 8 7 11.2 7c2.3 0 3.9 1.3 4.8 2.9C16.9 8.3 18.5 7 20.8 7 24 7 27 9.4 27 13.8 27 21.4 16 28 16 28z'/%3E%3C/svg%3E" />
   <link rel="stylesheet" href="admin.css" />
+  <script>
+    // aplica o tema antes de desenhar, para não piscar
+    (function () {
+      var pref = "auto";
+      try { pref = localStorage.getItem("rs_tema") || "auto"; } catch (e) {}
+      var escuro = pref === "dark" || (pref === "auto" && window.matchMedia("(prefers-color-scheme: dark)").matches);
+      document.documentElement.setAttribute("data-theme", escuro ? "dark" : "light");
+      document.documentElement.setAttribute("data-theme-pref", pref);
+    })();
+  </script>
 </head>
 <body>
 
@@ -61,6 +71,12 @@
       <div class="side__foot">
         <button class="side__search" id="openPalette" type="button" title="Busca rápida (Ctrl+K)">
           <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="m20 20-4.2-4.2"/></svg><span>Buscar</span><kbd>Ctrl K</kbd>
+        </button>
+        <button class="side__theme" id="themeBtn" type="button" title="Tema: automático, claro ou escuro">
+          <svg class="ico-auto" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 3.5v17A8.5 8.5 0 0 0 12 3.5z" fill="currentColor"/></svg>
+          <svg class="ico-light" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2.5v2.5M12 19v2.5M2.5 12H5M19 12h2.5M5.3 5.3l1.8 1.8M16.9 16.9l1.8 1.8M5.3 18.7l1.8-1.8M16.9 7.1l1.8-1.8"/></svg>
+          <svg class="ico-dark" viewBox="0 0 24 24"><path d="M20 14.5A8.5 8.5 0 0 1 9.5 4a8.5 8.5 0 1 0 10.5 10.5z"/></svg>
+          <span id="themeLabel">Tema automático</span>
         </button>
         <a class="side__view" href="index.html" target="_blank" rel="noopener">
           <svg viewBox="0 0 24 24"><path d="M7 17 17 7M8 7h9v9"/></svg>Ver página

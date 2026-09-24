@@ -29,7 +29,7 @@ link/seção/promoção); **Ctrl+S** salva o que estiver aberto; apagar um link 
 destaque já agendado para sumir em 24h. A lista de links mostra mini-gráfico de cliques dos últimos 7 dias,
 o ícone do site de destino e a contagem regressiva de links agendados. A Visão geral traz alertas
 (melhor dia da semana, pico de ontem, links que caíram/subiram, origem principal) e exporta CSV.
-O painel segue o tema claro/escuro do aparelho.
+Tema claro/escuro: botão no menu alterna entre automático (segue o aparelho), claro e escuro; a escolha fica guardada no navegador.
 
 ## Acesso ao painel
 
