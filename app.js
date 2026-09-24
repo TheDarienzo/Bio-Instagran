@@ -239,15 +239,13 @@
     var linhas = grupos.map(function (g) {
       var v = g.v;
       var cls = (g.dias.indexOf(agora.dia) >= 0 ? "is-today" : "") + (v ? "" : " is-closed");
-      var txt = v ? fmt(v[0]) + " às " + fmt(v[1]) + (v[2] && v[3] ? " · almoço " + fmt(v[2]) + "–" + fmt(v[3]) : "") : "fechado";
+      var txt = v
+        ? fmt(v[0]) + " às " + fmt(v[1]) + (v[2] && v[3] ? '<span class="hours__lunch">almoço ' + fmt(v[2]) + " às " + fmt(v[3]) + "</span>" : "")
+        : "fechado";
       return '<div class="' + cls.trim() + '" style="display:contents"><dt>' + rotulo(g.dias) + "</dt><dd>" + txt + "</dd></div>";
     }).join("");
     box.innerHTML = "<dl>" + linhas + "</dl><small>Horário de Cuiabá</small>";
-    el.addEventListener("click", function () {
-      var open = box.hidden;
-      box.hidden = !open;
-      el.setAttribute("aria-expanded", open ? "true" : "false");
-    });
+    box.hidden = false;
   }
 
   /* ─── Folhas (compartilhar / filiais) ─── */

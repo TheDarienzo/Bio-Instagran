@@ -97,44 +97,29 @@ svg { display: block; }
   align-items: center;
   gap: 8px;
   margin: 14px 0 0;
-  padding: 0;
-  border: 0;
-  background: none;
-  font: inherit;
   font-size: 0.8rem;
   letter-spacing: 0.02em;
   color: var(--muted);
-  cursor: pointer;
 }
-.status::after {
-  content: "";
-  width: 6px; height: 6px;
-  margin-left: 2px;
-  border-right: 1.5px solid currentColor;
-  border-bottom: 1.5px solid currentColor;
-  transform: translateY(-2px) rotate(45deg);
-  opacity: .6;
-  transition: transform .25s;
-}
-.status[aria-expanded="true"]::after { transform: translateY(1px) rotate(-135deg); }
 
 /* tabela da semana */
 .hours {
-  max-width: 300px;
+  max-width: 320px;
   margin: 10px auto 0;
-  padding: 10px 14px;
+  padding: 10px 16px;
   border: 1px solid var(--plum-line);
   border-radius: 12px;
   background: var(--paper);
   font-size: .82rem;
   text-align: left;
-  animation: drop .35s var(--ease-swing);
 }
 .hours[hidden] { display: none; }
-.hours dl { display: grid; grid-template-columns: auto 1fr; gap: 4px 14px; margin: 0; }
-.hours dt { color: var(--muted); }
-.hours dd { margin: 0; color: var(--ink); }
+.hours dl { display: grid; grid-template-columns: auto 1fr; gap: 6px 16px; align-items: baseline; margin: 0; }
+.hours dt { color: var(--muted); white-space: nowrap; }
+.hours dd { margin: 0; color: var(--ink); white-space: nowrap; }
+.hours__lunch { display: block; font-size: .74rem; color: var(--muted); }
 .hours .is-today dt, .hours .is-today dd { color: var(--plum); font-weight: 500; }
+.hours .is-today .hours__lunch { color: var(--plum); opacity: .8; font-weight: 400; }
 .hours .is-closed dd { color: var(--muted); font-style: italic; }
 .hours small { display: block; margin-top: 8px; color: var(--muted); font-size: .72rem; }
 .status::before {
