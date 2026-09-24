@@ -29,6 +29,14 @@
 
   function digits(n) { return String(n || "").replace(/\D/g, ""); }
 
+  function novoId() {
+    if (window.crypto && crypto.randomUUID) return crypto.randomUUID();
+    return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, function (c) {
+      var r = Math.random() * 16 | 0;
+      return (c === "x" ? r : (r & 0x3 | 0x8)).toString(16);
+    });
+  }
+
   function fmtNumero(n) {
     var d = digits(n);
     if (d.length === 13) return "+" + d.slice(0, 2) + " (" + d.slice(2, 4) + ") " + d.slice(4, 9) + "-" + d.slice(9);
@@ -231,10 +239,16 @@
 
   var linkRows = $("linkRows");
 
+  function usaWhatsapp(l) {
+    return !!(l.whatsapp_todos || l.whatsapp_id || l.url === "whatsapp" || (l.url || "").indexOf("whatsapp:") === 0);
+  }
+
   function descreveDestino(l) {
-    if (l.whatsapp_id || l.url === "whatsapp" || (l.url || "").indexOf("whatsapp:") === 0) {
+    if (usaWhatsapp(l)) {
+      if (!whatsapps.length) return "WhatsApp · nenhum número cadastrado";
+      if (l.whatsapp_todos) return whatsapps.length > 1 ? "WhatsApp · o cliente escolhe a loja" : "WhatsApp · " + (whatsapps[0].nome || fmtNumero(whatsapps[0].numero));
       var wa = waById(l.whatsapp_id) || whatsapps[0];
-      return wa ? "WhatsApp · " + (wa.nome || fmtNumero(wa.numero)) : "WhatsApp · nenhum número cadastrado";
+      return "WhatsApp · " + (wa.nome || fmtNumero(wa.numero));
     }
     return l.url || "sem endereço";
   }
@@ -318,13 +332,14 @@
     if (e.target.name === "destino" && e.target.value === "whatsapp" && !editing) linkForm.icone.value = "whatsapp";
   });
 
-  function fillWaSelect(selected) {
+  function fillWaSelect(link) {
     var sel = linkForm.whatsapp_id;
-    sel.innerHTML = whatsapps.map(function (w) {
-      return '<option value="' + w.id + '"' + (w.ativo ? "" : " disabled") + ">" + esc(w.nome || fmtNumero(w.numero)) + (w.ativo ? "" : " (desligado)") + "</option>";
-    }).join("");
+    sel.innerHTML = '<option value="todos">Deixar o cliente escolher a loja (abre a lista)</option>' +
+      whatsapps.map(function (w) {
+        return '<option value="' + w.id + '"' + (w.ativo ? "" : " disabled") + ">" + esc(w.nome || fmtNumero(w.numero)) + (w.ativo ? "" : " (desligado)") + "</option>";
+      }).join("");
     $("waNone").hidden = whatsapps.length > 0;
-    if (selected && waById(selected)) sel.value = selected;
+    sel.value = link && link.whatsapp_id && waById(link.whatsapp_id) ? link.whatsapp_id : "todos";
   }
 
   function openEditor(link, tipo) {
@@ -335,13 +350,13 @@
     $("deleteLink").hidden = !link;
     $("linkStat").textContent = link && link.tipo === "link" ? link.cliques + " cliques até agora" : "";
 
-    var usaWa = !!(link && (link.whatsapp_id || link.url === "whatsapp" || (link.url || "").indexOf("whatsapp:") === 0));
+    var usaWa = !!(link && usaWhatsapp(link));
     linkForm.tipo.value = link ? link.tipo : tipo;
     linkForm.titulo.value = link ? link.titulo : "";
     linkForm.subtitulo.value = link ? link.subtitulo : "";
     linkForm.destino.value = usaWa ? "whatsapp" : "url";
     linkForm.url.value = link && !usaWa ? link.url : "";
-    fillWaSelect(link && link.whatsapp_id);
+    fillWaSelect(link);
     linkForm.whatsapp_mensagem.value = link ? (link.whatsapp_mensagem || ((link.url || "").indexOf("whatsapp:") === 0 ? link.url.slice(9) : "")) : "";
     linkForm.icone.value = link && ICONS.existe(link.icone) ? link.icone : "link";
     linkForm.destaque.checked = !!(link && link.destaque);
@@ -365,7 +380,8 @@
       titulo: linkForm.titulo.value.trim(),
       subtitulo: isLink ? linkForm.subtitulo.value.trim() : "",
       url: isLink && !usaWa ? linkForm.url.value.trim() : "",
-      whatsapp_id: usaWa ? (linkForm.whatsapp_id.value || null) : null,
+      whatsapp_todos: usaWa && linkForm.whatsapp_id.value === "todos",
+      whatsapp_id: usaWa && linkForm.whatsapp_id.value !== "todos" ? (linkForm.whatsapp_id.value || null) : null,
       whatsapp_mensagem: usaWa ? linkForm.whatsapp_mensagem.value.trim() : "",
       icone: isLink ? linkForm.icone.value : "",
       destaque: isLink && linkForm.destaque.checked,
@@ -373,7 +389,7 @@
       inicio: isLink ? fromLocalInput(linkForm.inicio.value) : null,
       fim: isLink ? fromLocalInput(linkForm.fim.value) : null,
     };
-    if (usaWa && !dados.whatsapp_id) {
+    if (usaWa && !whatsapps.length) {
       $("linkError").textContent = "Cadastre um número na aba WhatsApp antes.";
       return;
     }
@@ -639,9 +655,8 @@
     var linhas = Array.prototype.map.call(redeRows.children, function (li, i) {
       var input = li.querySelector("[name=url]");
       var url = input ? input.value.trim() : "whatsapp";
-      var row = { tipo: li.dataset.tipo, url: url, ativo: li.querySelector("[name=ativo]").checked, ordem: i };
-      if (li.dataset.id) row.id = li.dataset.id;
-      return row;
+      // linhas novas (rede ainda sem registro) ganham id aqui, para salvar tudo de uma vez
+      return { id: li.dataset.id || novoId(), tipo: li.dataset.tipo, url: url, ativo: li.querySelector("[name=ativo]").checked, ordem: i };
     });
     sb.from("redes").upsert(linhas).select().then(function (r) {
       if (r.error) throw r.error;

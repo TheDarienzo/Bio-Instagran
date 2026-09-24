@@ -32,16 +32,17 @@
     return true;
   }
 
-  // Para onde um link leva. Devolve "" quando não há como montar o destino.
+  // Para onde um link leva. Devolve "" quando não há como montar o destino
+  // e "#filiais" quando deve abrir a lista de lojas.
   function destino(l) {
-    var usaWa = l.whatsapp_id || l.url === "whatsapp" || (l.url || "").indexOf("whatsapp:") === 0;
+    var usaWa = l.whatsapp_todos || l.whatsapp_id || l.url === "whatsapp" || (l.url || "").indexOf("whatsapp:") === 0;
     if (!usaWa) return l.url || "#";
+    if (!whatsapps.length) return "";
+    var msg = l.whatsapp_mensagem || ((l.url || "").indexOf("whatsapp:") === 0 ? l.url.slice(9) : "");
+    if (l.whatsapp_todos && whatsapps.length > 1) return "#filiais";
     var wa = null;
     for (var i = 0; i < whatsapps.length; i++) if (whatsapps[i].id === l.whatsapp_id) wa = whatsapps[i];
-    wa = wa || whatsapps[0];
-    if (!wa) return "";
-    var msg = l.whatsapp_mensagem || ((l.url || "").indexOf("whatsapp:") === 0 ? l.url.slice(9) : "");
-    return waLink(wa, msg);
+    return waLink(wa || whatsapps[0], msg);
   }
 
   /* ─── Carrega tudo ─── */
@@ -119,8 +120,10 @@
       }
 
       if (it.destaque) li.className = "is-featured";
+      var abreLista = it.href === "#filiais";
       li.innerHTML =
         '<a class="tag' + (it.destaque ? " tag--featured" : "") + '" href="' + esc(it.href) + '" data-id="' + esc(it.id) + '"' +
+        (abreLista ? ' data-filiais data-msg="' + esc(it.whatsapp_mensagem) + '"' : "") +
         (isExternal(it.href) ? ' target="_blank" rel="noopener"' : "") + ">" +
         '<span class="tag__icon">' + ICONS.svg(it.icone) + "</span>" +
         '<span class="tag__text">' +
@@ -229,19 +232,23 @@
     var box = document.getElementById("branches");
     if (whatsapps.length < 2) return;
 
-    box.innerHTML = whatsapps.map(function (w) {
-      return '<a class="branch" href="' + esc(waLink(w)) + '" target="_blank" rel="noopener">' +
-        '<span class="branch__icon">' + ICONS.svg("whatsapp") + "</span>" +
-        '<span class="branch__text"><span class="branch__name">' + esc(w.nome || "WhatsApp") + "</span>" +
-          (w.endereco ? '<span class="branch__addr">' + esc(w.endereco) + "</span>" : "") + "</span>" +
-        ARROW + "</a>";
-    }).join("");
+    // a mensagem pode mudar conforme o botão que abriu a lista
+    function montar(msg) {
+      box.innerHTML = whatsapps.map(function (w) {
+        return '<a class="branch" href="' + esc(waLink(w, msg)) + '" target="_blank" rel="noopener">' +
+          '<span class="branch__icon">' + ICONS.svg("whatsapp") + "</span>" +
+          '<span class="branch__text"><span class="branch__name">' + esc(w.nome || "WhatsApp") + "</span>" +
+            (w.endereco ? '<span class="branch__addr">' + esc(w.endereco) + "</span>" : "") + "</span>" +
+          ARROW + "</a>";
+      }).join("");
+    }
 
     wireSheet(sheet);
     document.addEventListener("click", function (e) {
       var a = e.target.closest("[data-filiais]");
       if (!a) return;
       e.preventDefault();
+      montar(a.dataset.msg || "");
       openSheet(sheet);
     });
   }
