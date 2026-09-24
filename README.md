@@ -12,8 +12,8 @@ Os dados ficam no Supabase (projeto "Bio Instagran"). A página pública lê de 
 
 | Aba | O que controla |
 |---|---|
-| **Links** | Criar, editar, apagar e reordenar (arrastando) os botões. Ligar/desligar sem apagar. Cada link vai para um endereço ou para um dos WhatsApps, com mensagem própria se quiser. Botão em destaque, selo ("Novo"), ícone, subtítulo, agendamento (o link aparece só num período). Contagem de cliques. |
-| **WhatsApp** | Um número por loja (filial): nome, número, endereço e mensagem que já chega escrita. Com mais de um número ligado, o ícone de WhatsApp da página abre uma lista para o cliente escolher a loja. |
+| **Links** | Criar, editar, apagar e reordenar (arrastando) os botões. Ligar/desligar sem apagar. Cada link vai para um endereço, para o WhatsApp (uma loja ou o cliente escolhe) ou para "Como chegar" (mapa das lojas). Botão em destaque, selo ("Novo"), ícone, subtítulo, agendamento (o link aparece só num período). Contagem de cliques. |
+| **Lojas** | Uma linha por loja: nome, WhatsApp, endereço, link do Google Maps (opcional) e mensagem que já chega escrita. Com mais de uma loja, o ícone de WhatsApp e os links "Como chegar" abrem uma lista para o cliente escolher a loja. |
 | **Perfil** | Nome, frase da bio, logo (envia uma imagem), endereço da página publicada (usado no QR code). |
 | **Redes** | Instagram, TikTok, Facebook, Pinterest, YouTube, e-mail: endereço e ligado/desligado. O WhatsApp usa os números da aba WhatsApp. |
 | **Horário** | Dias, horários e pausa de almoço. A página mostra "Atendendo agora", "Pausa para o almoço" ou quando volta, sempre no horário de **Cuiabá** (UTC−4), não importa onde o visitante esteja. |

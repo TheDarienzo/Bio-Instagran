@@ -32,9 +32,21 @@
     return true;
   }
 
-  // Para onde um link leva. Devolve "" quando não há como montar o destino
-  // e "#filiais" quando deve abrir a lista de lojas.
+  function mapaLink(w) {
+    return w.mapa_url || "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(w.endereco);
+  }
+  function lojasComEndereco() {
+    return whatsapps.filter(function (w) { return w.endereco || w.mapa_url; });
+  }
+
+  // Para onde um link leva. Devolve "" quando não há como montar o destino,
+  // "#filiais" quando abre a lista de WhatsApps e "#mapas" quando abre a lista de endereços.
   function destino(l) {
+    if (l.mapa) {
+      var lojas = lojasComEndereco();
+      if (!lojas.length) return "";
+      return lojas.length === 1 ? mapaLink(lojas[0]) : "#mapas";
+    }
     var usaWa = l.whatsapp_todos || l.whatsapp_id || l.url === "whatsapp" || (l.url || "").indexOf("whatsapp:") === 0;
     if (!usaWa) return l.url || "#";
     if (!whatsapps.length) return "";
@@ -53,7 +65,7 @@
     sb.from("whatsapps").select("*").eq("ativo", true).order("ordem"),
   ]).then(function (res) {
     conf = res[0].data || {};
-    whatsapps = (res[3].data || []).filter(function (w) { return digits(w.numero); });
+    whatsapps = (res[3].data || []).filter(function (w) { return digits(w.numero) || w.endereco || w.mapa_url; });
     render(res[1].data || [], res[2].data || []);
   }).catch(function () {
     document.getElementById("bio").textContent = "Não foi possível carregar a página agora.";
@@ -75,8 +87,9 @@
       var href = r.url;
       var a = document.createElement("a");
       if (r.tipo === "whatsapp") {
-        if (!whatsapps.length) return;
-        if (whatsapps.length === 1) href = waLink(whatsapps[0]);
+        var comNumero = whatsapps.filter(function (w) { return digits(w.numero); });
+        if (!comNumero.length) return;
+        if (comNumero.length === 1) href = waLink(comNumero[0]);
         else { href = "#"; a.dataset.filiais = ""; }
       }
       if (!href) return;
@@ -120,10 +133,10 @@
       }
 
       if (it.destaque) li.className = "is-featured";
-      var abreLista = it.href === "#filiais";
       li.innerHTML =
         '<a class="tag' + (it.destaque ? " tag--featured" : "") + '" href="' + esc(it.href) + '" data-id="' + esc(it.id) + '"' +
-        (abreLista ? ' data-filiais data-msg="' + esc(it.whatsapp_mensagem) + '"' : "") +
+        (it.href === "#filiais" ? ' data-filiais data-msg="' + esc(it.whatsapp_mensagem) + '"' : "") +
+        (it.href === "#mapas" ? " data-mapas" : "") +
         (isExternal(it.href) ? ' target="_blank" rel="noopener"' : "") + ">" +
         '<span class="tag__icon">' + ICONS.svg(it.icone) + "</span>" +
         '<span class="tag__text">' +
@@ -232,12 +245,17 @@
     var box = document.getElementById("branches");
     if (whatsapps.length < 2) return;
 
-    // a mensagem pode mudar conforme o botão que abriu a lista
-    function montar(msg) {
-      box.innerHTML = whatsapps.map(function (w) {
-        return '<a class="branch" href="' + esc(waLink(w, msg)) + '" target="_blank" rel="noopener">' +
-          '<span class="branch__icon">' + ICONS.svg("whatsapp") + "</span>" +
-          '<span class="branch__text"><span class="branch__name">' + esc(w.nome || "WhatsApp") + "</span>" +
+    // A mesma folha serve para "falar no WhatsApp" e "como chegar";
+    // muda o título, o ícone e para onde cada loja leva.
+    function montar(modo, msg) {
+      var mapa = modo === "mapas";
+      var lojas = mapa ? lojasComEndereco() : whatsapps.filter(function (w) { return digits(w.numero); });
+      document.getElementById("waTitle").textContent = mapa ? "Como chegar" : "Falar no WhatsApp";
+      document.getElementById("waSub").textContent = mapa ? "Escolha a loja para abrir no mapa" : "Escolha a loja mais perto de você";
+      box.innerHTML = lojas.map(function (w) {
+        return '<a class="branch" href="' + esc(mapa ? mapaLink(w) : waLink(w, msg)) + '" target="_blank" rel="noopener">' +
+          '<span class="branch__icon">' + ICONS.svg(mapa ? "map" : "whatsapp") + "</span>" +
+          '<span class="branch__text"><span class="branch__name">' + esc(w.nome || (mapa ? "Loja" : "WhatsApp")) + "</span>" +
             (w.endereco ? '<span class="branch__addr">' + esc(w.endereco) + "</span>" : "") + "</span>" +
           ARROW + "</a>";
       }).join("");
@@ -245,10 +263,10 @@
 
     wireSheet(sheet);
     document.addEventListener("click", function (e) {
-      var a = e.target.closest("[data-filiais]");
+      var a = e.target.closest("[data-filiais], [data-mapas]");
       if (!a) return;
       e.preventDefault();
-      montar(a.dataset.msg || "");
+      montar(a.hasAttribute("data-mapas") ? "mapas" : "filiais", a.dataset.msg || "");
       openSheet(sheet);
     });
   }

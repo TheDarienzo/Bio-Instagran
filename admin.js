@@ -244,6 +244,11 @@
   }
 
   function descreveDestino(l) {
+    if (l.mapa) {
+      var comEnd = whatsapps.filter(function (w) { return w.endereco || w.mapa_url; });
+      if (!comEnd.length) return "Como chegar · nenhuma loja com endereço";
+      return "Como chegar · " + (comEnd.length > 1 ? "o cliente escolhe a loja" : (comEnd[0].nome || comEnd[0].endereco));
+    }
     if (usaWhatsapp(l)) {
       if (!whatsapps.length) return "WhatsApp · nenhum número cadastrado";
       if (l.whatsapp_todos) return whatsapps.length > 1 ? "WhatsApp · o cliente escolhe a loja" : "WhatsApp · " + (whatsapps[0].nome || fmtNumero(whatsapps[0].numero));
@@ -324,12 +329,14 @@
     var isLink = linkForm.tipo.value === "link";
     linkForm.querySelector("[data-only=link]").hidden = !isLink;
     var dest = linkForm.destino.value;
-    linkForm.querySelector("[data-dest=url]").hidden = dest !== "url";
-    linkForm.querySelector("[data-dest=whatsapp]").hidden = dest !== "whatsapp";
+    linkForm.querySelectorAll("[data-dest]").forEach(function (el) { el.hidden = el.dataset.dest !== dest; });
   }
   linkForm.addEventListener("change", function (e) {
     if (e.target.name === "tipo" || e.target.name === "destino") syncTipo();
-    if (e.target.name === "destino" && e.target.value === "whatsapp" && !editing) linkForm.icone.value = "whatsapp";
+    if (e.target.name === "destino" && !editing) {
+      if (e.target.value === "whatsapp") linkForm.icone.value = "whatsapp";
+      if (e.target.value === "mapa") linkForm.icone.value = "map";
+    }
   });
 
   function fillWaSelect(link) {
@@ -354,8 +361,8 @@
     linkForm.tipo.value = link ? link.tipo : tipo;
     linkForm.titulo.value = link ? link.titulo : "";
     linkForm.subtitulo.value = link ? link.subtitulo : "";
-    linkForm.destino.value = usaWa ? "whatsapp" : "url";
-    linkForm.url.value = link && !usaWa ? link.url : "";
+    linkForm.destino.value = link && link.mapa ? "mapa" : (usaWa ? "whatsapp" : "url");
+    linkForm.url.value = link && !usaWa && !link.mapa ? link.url : "";
     fillWaSelect(link);
     linkForm.whatsapp_mensagem.value = link ? (link.whatsapp_mensagem || ((link.url || "").indexOf("whatsapp:") === 0 ? link.url.slice(9) : "")) : "";
     linkForm.icone.value = link && ICONS.existe(link.icone) ? link.icone : "link";
@@ -375,11 +382,13 @@
     e.preventDefault();
     var isLink = linkForm.tipo.value === "link";
     var usaWa = isLink && linkForm.destino.value === "whatsapp";
+    var usaMapa = isLink && linkForm.destino.value === "mapa";
     var dados = {
       tipo: linkForm.tipo.value,
       titulo: linkForm.titulo.value.trim(),
       subtitulo: isLink ? linkForm.subtitulo.value.trim() : "",
-      url: isLink && !usaWa ? linkForm.url.value.trim() : "",
+      url: isLink && !usaWa && !usaMapa ? linkForm.url.value.trim() : "",
+      mapa: usaMapa,
       whatsapp_todos: usaWa && linkForm.whatsapp_id.value === "todos",
       whatsapp_id: usaWa && linkForm.whatsapp_id.value !== "todos" ? (linkForm.whatsapp_id.value || null) : null,
       whatsapp_mensagem: usaWa ? linkForm.whatsapp_mensagem.value.trim() : "",
@@ -389,8 +398,12 @@
       inicio: isLink ? fromLocalInput(linkForm.inicio.value) : null,
       fim: isLink ? fromLocalInput(linkForm.fim.value) : null,
     };
-    if (usaWa && !whatsapps.length) {
-      $("linkError").textContent = "Cadastre um número na aba WhatsApp antes.";
+    if (usaWa && !whatsapps.some(function (w) { return digits(w.numero); })) {
+      $("linkError").textContent = "Cadastre uma loja com WhatsApp na aba Lojas antes.";
+      return;
+    }
+    if (usaMapa && !whatsapps.some(function (w) { return w.endereco || w.mapa_url; })) {
+      $("linkError").textContent = "Cadastre o endereço de pelo menos uma loja na aba Lojas antes.";
       return;
     }
     if (dados.inicio && dados.fim && dados.inicio > dados.fim) {
@@ -444,11 +457,15 @@
       var li = document.createElement("li");
       li.dataset.id = w.id;
       li.className = "row" + (w.ativo ? "" : " is-off");
+      var partes = [];
+      if (digits(w.numero)) partes.push(fmtNumero(w.numero));
+      if (w.endereco) partes.push(w.endereco);
       li.innerHTML = HANDLE +
-        '<span class="row__icon">' + ICONS.svg("whatsapp") + "</span>" +
+        '<span class="row__icon">' + ICONS.svg(digits(w.numero) ? "whatsapp" : "map") + "</span>" +
         '<div class="row__body"><span class="row__title">' + esc(w.nome || "Sem nome") +
-          (!digits(w.numero) ? '<span class="row__pill">sem número</span>' : "") + "</span>" +
-          '<span class="row__sub">' + esc(fmtNumero(w.numero)) + (w.endereco ? " · " + esc(w.endereco) : "") + "</span></div>" +
+          (!digits(w.numero) ? '<span class="row__pill">sem WhatsApp</span>' : "") +
+          (!w.endereco && !w.mapa_url ? '<span class="row__pill">sem endereço</span>' : "") + "</span>" +
+          '<span class="row__sub">' + esc(partes.join(" · ") || "preencha WhatsApp ou endereço") + "</span></div>" +
         '<div class="row__right"><label class="switch"><input type="checkbox" data-toggle' + (w.ativo ? " checked" : "") + '><span></span></label></div>';
       waRows.appendChild(li);
     });
@@ -484,11 +501,12 @@
     editingWa = w;
     waForm.reset();
     $("waError").textContent = "";
-    $("waEditorTitle").textContent = w ? "Editar número" : "Novo número";
+    $("waEditorTitle").textContent = w ? "Editar loja" : "Nova loja";
     $("deleteWa").hidden = !w;
     waForm.nome.value = w ? w.nome : "";
     waForm.numero.value = w ? w.numero : "";
     waForm.endereco.value = w ? w.endereco : "";
+    waForm.mapa_url.value = w ? w.mapa_url || "" : "";
     waForm.mensagem.value = w ? w.mensagem : "";
     waEditor.hidden = false;
     setTimeout(function () { waForm.nome.focus(); }, 50);
@@ -500,13 +518,15 @@
     var numero = digits(waForm.numero.value);
     // DDD + número sem o código do país → assume Brasil
     if ((numero.length === 10 || numero.length === 11) && numero.indexOf("55") !== 0) numero = "55" + numero;
-    if (numero.length < 12) { $("waError").textContent = "Número incompleto. Use DDD + número, ex.: (65) 99999-0000."; return; }
+    if (numero && numero.length < 12) { $("waError").textContent = "Número incompleto. Use DDD + número, ex.: (65) 99999-0000."; return; }
     var dados = {
       nome: waForm.nome.value.trim(),
       numero: numero,
       endereco: waForm.endereco.value.trim(),
+      mapa_url: waForm.mapa_url.value.trim(),
       mensagem: waForm.mensagem.value.trim(),
     };
+    if (!numero && !dados.endereco && !dados.mapa_url) { $("waError").textContent = "Informe pelo menos o WhatsApp ou o endereço."; return; }
     var btn = waForm.querySelector("button[type=submit]");
     busy(btn, true);
     var q = editingWa
@@ -634,7 +654,7 @@
     redeRows.innerHTML = ordem.map(function (t) {
       var r = mapa[t];
       var campo = t === "whatsapp"
-        ? '<span class="rede__auto">Usa os números da aba WhatsApp' + (whatsapps.length > 1 ? " (o cliente escolhe a loja)" : "") + "</span>"
+        ? '<span class="rede__auto">Usa os WhatsApps da aba Lojas' + (whatsapps.length > 1 ? " (o cliente escolhe a loja)" : "") + "</span>"
         : '<input type="text" name="url" value="' + esc(r.url) + '" placeholder="' + esc(DICAS_REDES[t]) + '">';
       return '<li class="row' + (r.ativo ? "" : " is-off") + '" data-tipo="' + t + '"' + (r.id ? ' data-id="' + r.id + '"' : "") + ">" +
         '<span class="row__icon">' + ICONS.svg(t) + "</span>" +

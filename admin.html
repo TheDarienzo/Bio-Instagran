@@ -39,7 +39,7 @@
           <svg viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h10"/></svg>Links
         </button>
         <button data-tab="whatsapp">
-          <svg viewBox="0 0 24 24" class="fill"><path d="M17.5 14.4c-.3-.1-1.8-.9-2-1-.3-.1-.5-.1-.7.1-.2.3-.8 1-.9 1.2-.2.2-.3.2-.6.1-.3-.1-1.3-.5-2.4-1.5-.9-.8-1.5-1.8-1.7-2.1-.2-.3 0-.5.1-.6l.5-.5c.1-.2.2-.3.3-.5.1-.2 0-.4 0-.5l-.9-2.2c-.2-.6-.5-.5-.7-.5h-.6c-.2 0-.5.1-.8.4-.3.3-1 1-1 2.5s1.1 2.9 1.2 3.1c.1.2 2.1 3.2 5.1 4.5.7.3 1.3.5 1.7.6.7.2 1.4.2 1.9.1.6-.1 1.8-.7 2-1.4.2-.7.2-1.3.2-1.4-.1-.1-.3-.2-.6-.3zM12 21.8c-1.8 0-3.5-.5-5-1.4l-.4-.2-3.7 1 1-3.6-.2-.4A9.8 9.8 0 1 1 12 21.8zM12 .2A11.8 11.8 0 0 0 1.8 17.8L.2 23.8l6.1-1.6A11.8 11.8 0 1 0 12 .2z"/></svg>WhatsApp
+          <svg viewBox="0 0 24 24"><path d="M3 21h18M5 21V8l7-4 7 4v13M9 21v-6h6v6"/></svg>Lojas
         </button>
         <button data-tab="perfil">
           <svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c.8-4 4-6.5 8-6.5s7.2 2.5 8 6.5"/></svg>Perfil
@@ -84,15 +84,15 @@
       <section class="panel" data-panel="whatsapp">
         <header class="panel__head">
           <div>
-            <h1>WhatsApp</h1>
-            <p>Um número por loja. Com mais de um, o ícone da página abre uma lista para o cliente escolher a loja. Cada link pode apontar para um número diferente.</p>
+            <h1>Lojas</h1>
+            <p>Cada loja tem seu WhatsApp e seu endereço. Com mais de uma, o cliente escolhe a loja ao tocar no WhatsApp ou em "Como chegar".</p>
           </div>
           <div class="panel__actions">
-            <button class="btn btn--primary" id="addWa">+ Número</button>
+            <button class="btn btn--primary" id="addWa">+ Loja</button>
           </div>
         </header>
         <ul class="rows" id="waRows"></ul>
-        <p class="empty" id="waEmpty" hidden>Nenhum WhatsApp cadastrado. Sem número, os links de WhatsApp ficam escondidos na página.</p>
+        <p class="empty" id="waEmpty" hidden>Nenhuma loja cadastrada. Sem loja, os links de WhatsApp e "Como chegar" ficam escondidos na página.</p>
       </section>
 
       <!-- ── Perfil ── -->
@@ -220,14 +220,17 @@
         <div class="field">
           <span class="field__label">Para onde vai</span>
           <div class="seg seg--sm">
-            <label><input type="radio" name="destino" value="url" checked /><span>Um endereço</span></label>
+            <label><input type="radio" name="destino" value="url" checked /><span>Um link</span></label>
             <label><input type="radio" name="destino" value="whatsapp" /><span>WhatsApp</span></label>
+            <label><input type="radio" name="destino" value="mapa" /><span>Como chegar</span></label>
           </div>
         </div>
 
         <div data-dest="url">
           <label><input name="url" placeholder="https://…" /></label>
         </div>
+
+        <p class="form__hint" data-dest="mapa">Abre o endereço das lojas da aba Lojas no mapa. Com mais de uma loja, o cliente escolhe qual.</p>
 
         <div data-dest="whatsapp" class="form">
           <label>Qual número <select name="whatsapp_id"></select>
@@ -272,12 +275,15 @@
       <button class="modal__x" type="button" data-close aria-label="Fechar">
         <svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg>
       </button>
-      <h2 id="waEditorTitle">Novo número</h2>
+      <h2 id="waEditorTitle">Nova loja</h2>
 
-      <label>Nome da loja <span class="opt">como o cliente vai ver</span> <input name="nome" required maxlength="40" placeholder="ex.: Loja Centro" /></label>
-      <label>Número <input name="numero" inputmode="numeric" required placeholder="5571999998888" />
-        <small>Com código do país (55) e DDD, só números.</small></label>
-      <label>Endereço <span class="opt">opcional</span> <input name="endereco" maxlength="120" placeholder="Rua, número, bairro, cidade" /></label>
+      <label>Nome da loja <span class="opt">como o cliente vai ver</span> <input name="nome" required maxlength="40" placeholder="ex.: Jardim União" /></label>
+      <label>WhatsApp <input name="numero" inputmode="numeric" placeholder="(65) 99999-0000" />
+        <small>DDD + número. Pode deixar vazio se a loja não atende por WhatsApp.</small></label>
+      <label>Endereço <input name="endereco" maxlength="120" placeholder="Rua, número, bairro, cidade" />
+        <small>Usado em "Como chegar" e na lista de lojas.</small></label>
+      <label>Link do Google Maps <span class="opt">opcional</span> <input name="mapa_url" type="url" placeholder="https://maps.app.goo.gl/…" />
+        <small>No Google Maps, toque em Compartilhar e cole o link aqui. Se ficar vazio, o mapa pesquisa pelo endereço.</small></label>
       <label>Mensagem que já chega escrita <textarea name="mensagem" rows="2" placeholder="Oi! Vim pelo Instagram e quero saber mais sobre as peças 💜"></textarea></label>
 
       <p class="form__error" id="waError"></p>
