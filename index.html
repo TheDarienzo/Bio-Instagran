@@ -79,8 +79,19 @@
     </div>
   </div>
 
-  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+  <div class="sheet" id="waSheet" hidden>
+    <div class="sheet__backdrop" data-close></div>
+    <div class="sheet__panel" role="dialog" aria-modal="true" aria-labelledby="waTitle">
+      <button class="sheet__x" type="button" data-close aria-label="Fechar">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>
+      </button>
+      <h2 id="waTitle">Falar no WhatsApp</h2>
+      <p class="sheet__sub">Escolha a loja mais perto de você</p>
+      <div class="branches" id="branches"></div>
+    </div>
+  </div>
 
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
   <script src="assets/vendor/supabase.js"></script>
   <script src="supabase-config.js"></script>

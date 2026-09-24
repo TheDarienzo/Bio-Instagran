@@ -425,6 +425,41 @@ svg.fill { fill: currentColor; stroke: none; }
 .sheet__actions > *:hover { background: var(--plum-wash); }
 .sheet__actions svg { width: 19px; height: 19px; color: var(--plum); }
 
+/* ─── Escolha de loja (WhatsApp) ─────────────── */
+
+.sheet__sub {
+  margin: -12px 0 18px;
+  text-align: center;
+  font-size: .85rem;
+  color: var(--muted);
+}
+.branches { display: grid; gap: 8px; }
+.branch {
+  display: grid;
+  grid-template-columns: 38px 1fr 16px;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border: 1px solid var(--plum-line);
+  border-radius: 12px;
+  color: var(--ink);
+  text-decoration: none;
+  transition: background-color .2s;
+}
+.branch:hover { background: var(--plum-wash); }
+.branch__icon {
+  display: grid; place-items: center;
+  width: 38px; height: 38px;
+  border-radius: 50%;
+  background: var(--plum);
+  color: var(--paper);
+}
+.branch__icon svg { width: 19px; height: 19px; }
+.branch__text { min-width: 0; }
+.branch__name { display: block; font-weight: 500; }
+.branch__addr { display: block; font-size: .8rem; color: var(--muted); }
+.branch .tag__go { opacity: .6; }
+
 .toast {
   position: fixed;
   left: 50%;

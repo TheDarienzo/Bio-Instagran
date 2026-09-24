@@ -8,6 +8,7 @@
   var ARROW = '<svg class="tag__go" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 17 17 7M8 7h9v9"/></svg>';
 
   var conf = {};
+  var whatsapps = [];
   var pageUrl = location.href.split("#")[0].split("?")[0];
 
   function esc(s) {
@@ -16,16 +17,11 @@
     });
   }
 
-  function waLink(msg) {
-    var text = msg == null ? conf.whatsapp_mensagem : msg;
-    return "https://wa.me/" + String(conf.whatsapp_numero || "").replace(/\D/g, "") + (text ? "?text=" + encodeURIComponent(text) : "");
-  }
+  function digits(n) { return String(n || "").replace(/\D/g, ""); }
 
-  function resolve(url) {
-    if (!url) return "";
-    if (url === "whatsapp") return waLink();
-    if (url.indexOf("whatsapp:") === 0) return waLink(url.slice(9));
-    return url;
+  function waLink(wa, msg) {
+    var text = msg || wa.mensagem;
+    return "https://wa.me/" + digits(wa.numero) + (text ? "?text=" + encodeURIComponent(text) : "");
   }
 
   function isExternal(url) { return /^https?:/i.test(url); }
@@ -36,13 +32,27 @@
     return true;
   }
 
+  // Para onde um link leva. Devolve "" quando não há como montar o destino.
+  function destino(l) {
+    var usaWa = l.whatsapp_id || l.url === "whatsapp" || (l.url || "").indexOf("whatsapp:") === 0;
+    if (!usaWa) return l.url || "#";
+    var wa = null;
+    for (var i = 0; i < whatsapps.length; i++) if (whatsapps[i].id === l.whatsapp_id) wa = whatsapps[i];
+    wa = wa || whatsapps[0];
+    if (!wa) return "";
+    var msg = l.whatsapp_mensagem || ((l.url || "").indexOf("whatsapp:") === 0 ? l.url.slice(9) : "");
+    return waLink(wa, msg);
+  }
+
   /* ─── Carrega tudo ─── */
   Promise.all([
     sb.from("configuracoes").select("*").eq("id", 1).maybeSingle(),
     sb.from("redes").select("*").eq("ativo", true).order("ordem"),
     sb.from("links").select("*").eq("ativo", true).order("ordem"),
+    sb.from("whatsapps").select("*").eq("ativo", true).order("ordem"),
   ]).then(function (res) {
     conf = res[0].data || {};
+    whatsapps = (res[3].data || []).filter(function (w) { return digits(w.numero); });
     render(res[1].data || [], res[2].data || []);
   }).catch(function () {
     document.getElementById("bio").textContent = "Não foi possível carregar a página agora.";
@@ -61,9 +71,14 @@
     /* Redes */
     var socials = document.getElementById("socials");
     redes.forEach(function (r) {
-      var href = resolve(r.url);
-      if (!href) return;
+      var href = r.url;
       var a = document.createElement("a");
+      if (r.tipo === "whatsapp") {
+        if (!whatsapps.length) return;
+        if (whatsapps.length === 1) href = waLink(whatsapps[0]);
+        else { href = "#"; a.dataset.filiais = ""; }
+      }
+      if (!href) return;
       a.href = href;
       a.innerHTML = ICONS.svg(r.tipo);
       a.setAttribute("aria-label", r.tipo.charAt(0).toUpperCase() + r.tipo.slice(1));
@@ -75,7 +90,14 @@
     /* Links */
     var list = document.getElementById("links");
     var now = new Date();
-    var items = links.filter(function (it) { return it.tipo === "secao" || inWindow(it, now); });
+    var items = [];
+    links.forEach(function (it) {
+      if (it.tipo === "secao") { items.push(it); return; }
+      if (!inWindow(it, now)) return;
+      var href = destino(it);
+      if (!href) return; // WhatsApp sem filial cadastrada
+      items.push(Object.assign({}, it, { href: href }));
+    });
 
     // não mostra um título de seção se não sobrar nenhum link nela
     items = items.filter(function (it, idx) {
@@ -96,12 +118,10 @@
         return;
       }
 
-      var href = resolve(it.url) || "#";
       if (it.destaque) li.className = "is-featured";
-
       li.innerHTML =
-        '<a class="tag' + (it.destaque ? " tag--featured" : "") + '" href="' + esc(href) + '" data-id="' + esc(it.id) + '"' +
-        (isExternal(href) ? ' target="_blank" rel="noopener"' : "") + ">" +
+        '<a class="tag' + (it.destaque ? " tag--featured" : "") + '" href="' + esc(it.href) + '" data-id="' + esc(it.id) + '"' +
+        (isExternal(it.href) ? ' target="_blank" rel="noopener"' : "") + ">" +
         '<span class="tag__icon">' + ICONS.svg(it.icone) + "</span>" +
         '<span class="tag__text">' +
           '<span class="tag__title">' + esc(it.titulo) +
@@ -119,42 +139,111 @@
     });
 
     renderStatus();
+    setupFiliais();
     setupShare();
   }
 
   /* ─── Horário de atendimento ─── */
+
+  // Hora atual nas lojas (Cuiabá, UTC−4), não importa onde o visitante esteja.
+  var FUSO = "America/Cuiaba";
+  function agoraNaLoja() {
+    var partes = new Intl.DateTimeFormat("en-US", {
+      timeZone: FUSO, hour12: false, weekday: "short", hour: "2-digit", minute: "2-digit",
+    }).formatToParts(new Date());
+    var v = {};
+    partes.forEach(function (p) { v[p.type] = p.value; });
+    var dia = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].indexOf(v.weekday);
+    return { dia: dia < 0 ? new Date().getDay() : dia, mins: (+v.hour % 24) * 60 + +v.minute };
+  }
+
+  // Um dia salvo é [abre, fecha] ou [abre, fecha, almocoInicio, almocoFim]
   function renderStatus() {
     var h = conf.horario;
     var el = document.getElementById("status");
     if (!h || !Object.keys(h).some(function (k) { return h[k]; })) return;
 
-    var d = new Date();
-    var mins = d.getHours() * 60 + d.getMinutes();
+    var agora = agoraNaLoja();
+    var mins = agora.mins;
     var DIAS = ["domingo", "segunda", "terça", "quarta", "quinta", "sexta", "sábado"];
 
     function toMin(t) { var p = t.split(":"); return +p[0] * 60 + +p[1]; }
     function fmt(t) { var p = t.split(":"); return +p[0] + "h" + (p[1] !== "00" ? p[1] : ""); }
 
-    var today = h[d.getDay()];
-    if (today && mins >= toMin(today[0]) && mins < toMin(today[1])) {
-      el.textContent = "Atendendo agora · até " + fmt(today[1]);
-      el.classList.add("is-open");
+    var hoje = h[agora.dia];
+    var almoco = hoje && hoje[2] && hoje[3] ? [toMin(hoje[2]), toMin(hoje[3])] : null;
+    var texto = "";
+
+    if (hoje && mins >= toMin(hoje[0]) && mins < toMin(hoje[1])) {
+      if (almoco && mins >= almoco[0] && mins < almoco[1]) {
+        texto = "Pausa para o almoço · volta às " + fmt(hoje[3]);
+      } else if (almoco && mins < almoco[0]) {
+        texto = "Atendendo agora · pausa às " + fmt(hoje[2]);
+        el.classList.add("is-open");
+      } else {
+        texto = "Atendendo agora · até " + fmt(hoje[1]);
+        el.classList.add("is-open");
+      }
     } else {
       var msg = "";
-      if (today && mins < toMin(today[0])) {
-        msg = "Abre hoje às " + fmt(today[0]);
+      if (hoje && mins < toMin(hoje[0])) {
+        msg = "Abre hoje às " + fmt(hoje[0]);
       } else {
         for (var k = 1; k <= 7; k++) {
-          var day = (d.getDay() + k) % 7;
-          if (h[day]) {
-            msg = "Volta " + (k === 1 ? "amanhã" : DIAS[day]) + " às " + fmt(h[day][0]);
+          var dia = (agora.dia + k) % 7;
+          if (h[dia]) {
+            msg = "Volta " + (k === 1 ? "amanhã" : DIAS[dia]) + " às " + fmt(h[dia][0]);
             break;
           }
         }
       }
-      el.textContent = msg ? "Fora do horário · " + msg : "";
+      texto = msg ? "Fora do horário · " + msg : "";
     }
-    el.hidden = !el.textContent;
+    el.textContent = texto;
+    el.hidden = !texto;
+  }
+
+  /* ─── Folhas (compartilhar / filiais) ─── */
+  var lastFocus;
+  function openSheet(sheet) {
+    lastFocus = document.activeElement;
+    sheet.hidden = false;
+    sheet.querySelector(".sheet__x").focus();
+  }
+  function closeSheet(sheet) {
+    sheet.hidden = true;
+    if (lastFocus) lastFocus.focus();
+  }
+  function wireSheet(sheet) {
+    sheet.addEventListener("click", function (e) {
+      if (e.target.closest("[data-close]")) closeSheet(sheet);
+    });
+    document.addEventListener("keydown", function (e) {
+      if (e.key === "Escape" && !sheet.hidden) closeSheet(sheet);
+    });
+  }
+
+  /* ─── Escolha de filial (quando há mais de um WhatsApp) ─── */
+  function setupFiliais() {
+    var sheet = document.getElementById("waSheet");
+    var box = document.getElementById("branches");
+    if (whatsapps.length < 2) return;
+
+    box.innerHTML = whatsapps.map(function (w) {
+      return '<a class="branch" href="' + esc(waLink(w)) + '" target="_blank" rel="noopener">' +
+        '<span class="branch__icon">' + ICONS.svg("whatsapp") + "</span>" +
+        '<span class="branch__text"><span class="branch__name">' + esc(w.nome || "WhatsApp") + "</span>" +
+          (w.endereco ? '<span class="branch__addr">' + esc(w.endereco) + "</span>" : "") + "</span>" +
+        ARROW + "</a>";
+    }).join("");
+
+    wireSheet(sheet);
+    document.addEventListener("click", function (e) {
+      var a = e.target.closest("[data-filiais]");
+      if (!a) return;
+      e.preventDefault();
+      openSheet(sheet);
+    });
   }
 
   /* ─── Compartilhar ─── */
@@ -162,7 +251,6 @@
     var sheet = document.getElementById("sheet");
     var toastEl = document.getElementById("toast");
     var toastTimer;
-    var lastFocus;
 
     function toast(msg) {
       toastEl.textContent = msg;
@@ -171,23 +259,10 @@
       toastTimer = setTimeout(function () { toastEl.classList.remove("is-on"); }, 2200);
     }
 
-    function openSheet() {
-      lastFocus = document.activeElement;
-      sheet.hidden = false;
+    wireSheet(sheet);
+    document.getElementById("shareBtn").addEventListener("click", function () {
+      openSheet(sheet);
       renderQR();
-      sheet.querySelector(".sheet__x").focus();
-    }
-    function closeSheet() {
-      sheet.hidden = true;
-      if (lastFocus) lastFocus.focus();
-    }
-
-    document.getElementById("shareBtn").addEventListener("click", openSheet);
-    sheet.addEventListener("click", function (e) {
-      if (e.target.closest("[data-close]")) closeSheet();
-    });
-    document.addEventListener("keydown", function (e) {
-      if (e.key === "Escape" && !sheet.hidden) closeSheet();
     });
 
     document.getElementById("shareWa").href =
@@ -218,19 +293,18 @@
     }
 
     document.getElementById("saveContact").addEventListener("click", function () {
-      var tel = String(conf.whatsapp_numero || "").replace(/\D/g, "");
-      var vcf = [
-        "BEGIN:VCARD",
-        "VERSION:3.0",
-        "FN:" + (conf.nome || "Rayane Store"),
-        "ORG:" + (conf.nome || "Rayane Store"),
-        tel ? "TEL;TYPE=CELL:+" + tel : "",
-        "URL:" + pageUrl,
-        "END:VCARD",
-      ].filter(Boolean).join("\r\n");
+      var nome = conf.nome || "Rayane Store";
+      var linhas = ["BEGIN:VCARD", "VERSION:3.0", "FN:" + nome, "ORG:" + nome];
+      whatsapps.forEach(function (w) {
+        linhas.push("TEL;TYPE=CELL" + (w.nome ? ";TYPE=" + w.nome.replace(/[^\w]/g, "") : "") + ":+" + digits(w.numero));
+      });
+      whatsapps.forEach(function (w) {
+        if (w.endereco) linhas.push("ADR;TYPE=WORK:;;" + w.endereco.replace(/[,;]/g, " ") + ";;;;");
+      });
+      linhas.push("URL:" + pageUrl, "END:VCARD");
       var a = document.createElement("a");
-      a.href = URL.createObjectURL(new Blob([vcf], { type: "text/vcard" }));
-      a.download = "rayane-store.vcf";
+      a.href = URL.createObjectURL(new Blob([linhas.join("\r\n")], { type: "text/vcard" }));
+      a.download = nome.toLowerCase().replace(/\s+/g, "-") + ".vcf";
       document.body.appendChild(a);
       a.click();
       setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 500);
