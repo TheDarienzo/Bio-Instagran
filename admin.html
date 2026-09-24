@@ -1,0 +1,250 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Painel · Rayane Store</title>
+  <meta name="robots" content="noindex" />
+  <meta name="theme-color" content="#F6EFEA" />
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cpath fill='%23942C9D' d='M16 28s-11-6.6-11-14.2C5 9.4 8 7 11.2 7c2.3 0 3.9 1.3 4.8 2.9C16.9 8.3 18.5 7 20.8 7 24 7 27 9.4 27 13.8 27 21.4 16 28 16 28z'/%3E%3C/svg%3E" />
+  <link rel="stylesheet" href="admin.css" />
+</head>
+<body>
+
+  <!-- ══════════ Entrada ══════════ -->
+  <section class="gate" id="gate" hidden>
+    <div class="gate__card">
+      <img class="gate__logo" src="assets/logo.png" alt="Rayane Store" />
+      <p class="gate__eyebrow">Painel da loja</p>
+
+      <form id="loginForm" class="form">
+        <label>E-mail <input type="email" name="email" autocomplete="username" required /></label>
+        <label>Senha <input type="password" name="password" autocomplete="current-password" required minlength="6" /></label>
+        <button class="btn btn--primary" type="submit">Entrar</button>
+        <p class="form__error" id="loginError"></p>
+        <div class="gate__links">
+          <button type="button" class="linkish" data-gate="signup">Primeiro acesso? Criar conta</button>
+          <button type="button" class="linkish" data-gate="forgot">Esqueci a senha</button>
+        </div>
+      </form>
+
+      <form id="signupForm" class="form" hidden>
+        <p class="form__hint">A primeira conta criada vira a administradora da página. Contas criadas depois não têm acesso.</p>
+        <label>E-mail <input type="email" name="email" autocomplete="username" required /></label>
+        <label>Senha <input type="password" name="password" autocomplete="new-password" required minlength="6" placeholder="mínimo 6 caracteres" /></label>
+        <button class="btn btn--primary" type="submit">Criar conta</button>
+        <p class="form__error" id="signupError"></p>
+        <div class="gate__links"><button type="button" class="linkish" data-gate="login">Já tenho conta</button></div>
+      </form>
+
+      <form id="forgotForm" class="form" hidden>
+        <label>E-mail da conta <input type="email" name="email" required /></label>
+        <button class="btn btn--primary" type="submit">Enviar link de recuperação</button>
+        <p class="form__error" id="forgotError"></p>
+        <div class="gate__links"><button type="button" class="linkish" data-gate="login">Voltar</button></div>
+      </form>
+
+      <form id="recoverForm" class="form" hidden>
+        <p class="form__hint">Escolha uma nova senha.</p>
+        <label>Nova senha <input type="password" name="password" autocomplete="new-password" required minlength="6" /></label>
+        <button class="btn btn--primary" type="submit">Salvar nova senha</button>
+        <p class="form__error" id="recoverError"></p>
+      </form>
+
+      <p class="gate__msg" id="gateMsg" hidden></p>
+    </div>
+  </section>
+
+  <!-- ══════════ Painel ══════════ -->
+  <div class="shell" id="shell" hidden>
+    <aside class="side">
+      <div class="side__brand">
+        <img src="assets/logo.png" alt="" />
+        <span>Painel</span>
+      </div>
+      <nav class="side__nav" id="nav">
+        <button class="is-active" data-tab="links">
+          <svg viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h10"/></svg>Links
+        </button>
+        <button data-tab="perfil">
+          <svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c.8-4 4-6.5 8-6.5s7.2 2.5 8 6.5"/></svg>Perfil
+        </button>
+        <button data-tab="redes">
+          <svg viewBox="0 0 24 24"><circle cx="18" cy="5" r="2.5"/><circle cx="6" cy="12" r="2.5"/><circle cx="18" cy="19" r="2.5"/><path d="m8.2 10.8 7.6-4.4M8.2 13.2l7.6 4.4"/></svg>Redes
+        </button>
+        <button data-tab="horario">
+          <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>Horário
+        </button>
+      </nav>
+      <div class="side__foot">
+        <a class="side__view" href="index.html" target="_blank" rel="noopener">
+          <svg viewBox="0 0 24 24"><path d="M7 17 17 7M8 7h9v9"/></svg>Ver página
+        </a>
+        <button class="linkish" id="logout">Sair</button>
+      </div>
+    </aside>
+
+    <main class="work">
+
+      <!-- ── Links ── -->
+      <section class="panel is-active" data-panel="links">
+        <header class="panel__head">
+          <div>
+            <h1>Links</h1>
+            <p>Arraste para mudar a ordem. Desligue o interruptor para esconder sem apagar.</p>
+          </div>
+          <div class="panel__actions">
+            <button class="btn" id="addSection">+ Seção</button>
+            <button class="btn btn--primary" id="addLink">+ Link</button>
+          </div>
+        </header>
+        <ul class="rows" id="linkRows"></ul>
+        <p class="empty" id="linksEmpty" hidden>Nenhum link ainda. Comece pelo botão "+ Link".</p>
+      </section>
+
+      <!-- ── Perfil ── -->
+      <section class="panel" data-panel="perfil">
+        <header class="panel__head">
+          <div>
+            <h1>Perfil</h1>
+            <p>O que aparece no topo da página e o número que recebe as mensagens.</p>
+          </div>
+        </header>
+        <form class="form form--wide" id="perfilForm">
+          <div class="logo-field">
+            <div class="logo-field__preview"><img id="logoPreview" src="assets/logo.png" alt="" /></div>
+            <div>
+              <label class="btn btn--file">
+                Trocar logo <input type="file" id="logoFile" accept="image/png,image/jpeg,image/webp,image/svg+xml" hidden />
+              </label>
+              <p class="form__hint">PNG com fundo transparente fica melhor. Máximo 2 MB.</p>
+              <button type="button" class="linkish" id="logoReset" hidden>Voltar ao logo original</button>
+            </div>
+          </div>
+
+          <label>Nome da loja <input name="nome" required maxlength="60" /></label>
+          <label>Frase da bio <textarea name="bio" rows="2" maxlength="160"></textarea>
+            <small class="counter" data-for="bio"></small></label>
+
+          <h2 class="form__group">WhatsApp</h2>
+          <label>Número <input name="whatsapp_numero" inputmode="numeric" placeholder="5571999998888" />
+            <small>Com código do país (55) e DDD, só números.</small></label>
+          <label>Mensagem que já chega escrita <textarea name="whatsapp_mensagem" rows="2"></textarea></label>
+
+          <h2 class="form__group">Endereço da página</h2>
+          <label>Link publicado <input name="url" type="url" placeholder="https://…" />
+            <small>Usado no QR code e no botão de compartilhar. Preencha depois de publicar.</small></label>
+
+          <div class="form__foot">
+            <button class="btn btn--primary" type="submit">Salvar perfil</button>
+          </div>
+        </form>
+      </section>
+
+      <!-- ── Redes ── -->
+      <section class="panel" data-panel="redes">
+        <header class="panel__head">
+          <div>
+            <h1>Redes sociais</h1>
+            <p>Os ícones redondos embaixo da bio. Só aparecem os que estiverem ligados e com endereço.</p>
+          </div>
+        </header>
+        <form class="form form--wide" id="redesForm">
+          <ul class="rows rows--redes" id="redeRows"></ul>
+          <div class="form__foot">
+            <button class="btn btn--primary" type="submit">Salvar redes</button>
+          </div>
+        </form>
+      </section>
+
+      <!-- ── Horário ── -->
+      <section class="panel" data-panel="horario">
+        <header class="panel__head">
+          <div>
+            <h1>Horário de atendimento</h1>
+            <p>A página mostra "Atendendo agora" ou quando você volta. Desmarque todos para esconder.</p>
+          </div>
+        </header>
+        <form class="form form--wide" id="horarioForm">
+          <ul class="rows rows--dias" id="diaRows"></ul>
+          <div class="form__foot">
+            <button class="btn btn--primary" type="submit">Salvar horário</button>
+          </div>
+        </form>
+      </section>
+    </main>
+
+    <aside class="preview">
+      <div class="preview__phone">
+        <div class="preview__screen">
+          <iframe id="preview" src="index.html" title="Prévia da página"></iframe>
+        </div>
+      </div>
+      <p class="preview__hint">Prévia ao vivo · atualiza ao salvar</p>
+    </aside>
+  </div>
+
+  <!-- ══════════ Editor de link ══════════ -->
+  <div class="modal" id="editor" hidden>
+    <div class="modal__backdrop" data-close></div>
+    <form class="modal__panel form" id="linkForm" role="dialog" aria-modal="true" aria-labelledby="editorTitle">
+      <button class="modal__x" type="button" data-close aria-label="Fechar">
+        <svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg>
+      </button>
+      <h2 id="editorTitle">Novo link</h2>
+
+      <div class="seg" id="tipoSeg">
+        <label><input type="radio" name="tipo" value="link" checked /><span>Link</span></label>
+        <label><input type="radio" name="tipo" value="secao" /><span>Título de seção</span></label>
+      </div>
+
+      <label>Título <input name="titulo" required maxlength="60" /></label>
+
+      <div data-only="link">
+        <label>Subtítulo <span class="opt">opcional</span> <input name="subtitulo" maxlength="80" /></label>
+
+        <label>Para onde vai
+          <input name="url" placeholder="https://… ou whatsapp" />
+        </label>
+        <div class="chips">
+          <button type="button" class="chip" data-url="whatsapp">WhatsApp com a mensagem padrão</button>
+          <button type="button" class="chip" data-url="whatsapp:">WhatsApp com outra mensagem…</button>
+        </div>
+
+        <fieldset class="icons">
+          <legend>Ícone</legend>
+          <div id="iconGrid"></div>
+        </fieldset>
+
+        <div class="two">
+          <label class="check"><input type="checkbox" name="destaque" /><span>Botão em destaque (roxo cheio)</span></label>
+          <label>Selo <span class="opt">ex.: Novo, Promo</span> <input name="selo" maxlength="12" /></label>
+        </div>
+
+        <details class="sched">
+          <summary>Agendar aparição</summary>
+          <p class="form__hint">O link só aparece dentro do período. Deixe em branco para sempre.</p>
+          <div class="two">
+            <label>Aparece a partir de <input type="datetime-local" name="inicio" /></label>
+            <label>Some em <input type="datetime-local" name="fim" /></label>
+          </div>
+        </details>
+      </div>
+
+      <p class="form__error" id="linkError"></p>
+      <div class="modal__foot">
+        <button type="button" class="linkish danger" id="deleteLink" hidden>Apagar</button>
+        <span class="stat" id="linkStat"></span>
+        <button class="btn btn--primary" type="submit">Salvar</button>
+      </div>
+    </form>
+  </div>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <script src="assets/vendor/supabase.js"></script>
+  <script src="supabase-config.js"></script>
+  <script src="icons.js"></script>
+  <script src="admin.js"></script>
+</body>
+</html>
