@@ -1,11 +1,4 @@
 @font-face {
-  font-family: "Fraunces";
-  font-style: italic;
-  font-weight: 300 600;
-  font-display: swap;
-  src: url("assets/fonts/fraunces-italic.woff2") format("woff2");
-}
-@font-face {
   font-family: "Jost";
   font-style: normal;
   font-weight: 400 500;
@@ -27,7 +20,6 @@
   --magenta: #c23a9e;
   --green: #3f8f5a;
 
-  --display: "Fraunces", Georgia, serif;
   --body: "Jost", "Futura", "Century Gothic", sans-serif;
 
   --ease-swing: cubic-bezier(0.34, 1.4, 0.5, 1);
@@ -317,10 +309,11 @@ svg { display: block; }
   color: var(--muted);
 }
 .tag__badge {
-  font-family: var(--display);
-  font-style: italic;
-  font-weight: 450;
-  font-size: .78rem;
+  font-family: var(--body);
+  font-weight: 500;
+  font-size: .7rem;
+  letter-spacing: .06em;
+  text-transform: uppercase;
   display: inline-block;
   margin-left: 6px;
   vertical-align: 1px;
@@ -371,23 +364,19 @@ svg { display: block; }
 
 .links > li.is-featured {
   transform-origin: 20px 50%;
-  animation-name: drop, nudge, glow;
-  animation-duration: .7s, 5s, 3s;
-  animation-delay: .35s, 2.4s, 1s;
-  animation-iteration-count: 1, infinite, infinite;
-  animation-fill-mode: forwards, none, none;
-  animation-timing-function: var(--ease-swing), ease, ease-in-out;
+  animation-name: drop, nudge;
+  animation-duration: .7s, 5s;
+  animation-delay: .35s, 2.4s;
+  animation-iteration-count: 1, infinite;
+  animation-fill-mode: forwards, none;
+  animation-timing-function: var(--ease-swing), ease;
+  filter: drop-shadow(0 10px 22px rgba(148, 44, 157, .35));
 }
 @keyframes nudge {
   0%, 88%, 100% { transform: none; }
   91% { transform: rotate(-1.6deg); }
   94% { transform: rotate(1deg); }
   97% { transform: rotate(-.4deg); }
-}
-/* halo pulsando no botão principal */
-@keyframes glow {
-  0%, 100% { filter: drop-shadow(0 8px 18px rgba(148, 44, 157, .25)); }
-  50%      { filter: drop-shadow(0 12px 30px rgba(194, 58, 158, .5)); }
 }
 
 /* títulos de seção */
@@ -644,6 +633,24 @@ svg.fill { fill: currentColor; stroke: none; }
 
 @keyframes fade { from { opacity: 0; } }
 @keyframes rise { from { transform: translate(-50%, 40px); opacity: 0; } }
+
+/* ─── Modo leve (aparelho fraco / economia de dados) ─── */
+html.lite .aurora i { animation: none; filter: blur(40px); opacity: .45; }
+html.lite .logo { animation: hang 1.2s var(--ease-swing) both; }
+html.lite .logo img { filter: none; }
+html.lite .tag, html.lite .hours, html.lite .socials a, html.lite .sheet__panel, html.lite .sheet__backdrop, html.lite .branch {
+  -webkit-backdrop-filter: none; backdrop-filter: none;
+}
+html.lite .tag { background: var(--paper); box-shadow: inset 0 0 0 1px var(--plum-line); transition: none; }
+html.lite .tag:hover { transform: none; }
+html.lite .tag--featured { animation: none; background: linear-gradient(120deg, var(--plum-deep), var(--plum) 45%, var(--magenta)); }
+html.lite .links > li { filter: none; animation: none; opacity: 1; }
+html.lite .links > li.is-featured { animation: none; }
+html.lite .rail::after { display: none; }
+html.lite .status.is-open::before { animation: none; }
+html.lite .hours { animation: none; }
+html.lite .branch { animation: none; }
+html.lite .rack { transition: none; }
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; }

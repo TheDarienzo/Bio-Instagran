@@ -60,7 +60,7 @@ para o endereço do painel.
 ## Estrutura
 
 ```
-index.html, styles.css, app.js     página pública
+index.html, styles.css, app.js     página pública (api.js: cliente mínimo do Supabase, ~1 KB)
 admin.html, admin.css, admin.js    painel
 icons.js                           ícones compartilhados
 supabase-config.js                 endereço e chave pública do projeto
@@ -85,3 +85,11 @@ assets/vendor/                     supabase-js (MIT) e qrcode-generator (MIT)
 Horário: por dia, `[abre, fecha]` ou `[abre, fecha, almocoInicio, almocoFim]`; `null` = fechado.
 
 Bucket de storage `midia` (público) guarda o logo enviado pelo painel.
+
+## Desempenho da página pública
+
+- Uma única chamada ao banco (`pagina_publica()`), sem a biblioteca do Supabase (cliente próprio de 1 KB).
+- A última versão fica em cache no navegador: a página desenha na hora e atualiza por baixo se algo mudou.
+- Modo leve automático em aparelho fraco (pouca memória/CPU, economia de dados ou "reduzir movimento"):
+  sem desfoque, sem luzes animadas, sem brilhos.
+- ~90 KB no total (logo otimizado, uma fonte só, QR code carregado só ao abrir "Compartilhar").
