@@ -4,11 +4,8 @@
   "use strict";
   var cfg = window.SUPABASE;
   var base = cfg.url.replace(/\/$/, "") + "/rest/v1/";
-  var headers = {
-    apikey: cfg.key,
-    Authorization: "Bearer " + cfg.key,
-    "Content-Type": "application/json",
-  };
+  // Só "apikey": com a chave pública nova (sb_publishable_…) o Supabase já entra como visitante anônimo.
+  var headers = { apikey: cfg.key, "Content-Type": "application/json" };
 
   function chamar(caminho, opcoes) {
     return fetch(base + caminho, Object.assign({ headers: headers }, opcoes)).then(function (r) {
