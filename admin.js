@@ -71,7 +71,7 @@
 
   /* ═══════════ Prévia no celular (gaveta) ═══════════ */
   var drawer = $("drawer");
-  $("fabPreview").addEventListener("click", function () {
+  $("topPreview").addEventListener("click", function () {
     var f = $("previewMobile");
     if (!f.getAttribute("src")) f.src = "index.html";
     drawer.hidden = false;
@@ -238,7 +238,7 @@
   };
   var TABS = { dash: "Visão geral", links: "Links", whatsapp: "Lojas", perfil: "Perfil", redes: "Redes", horario: "Horário", acessos: "Acessos" };
 
-  function goTab(tab) { var b = document.querySelector('#nav [data-tab="' + tab + '"]'); if (b) b.click(); }
+  function goTab(tab) { ativarAba(tab); }
 
   function openPalette() {
     palette.hidden = false;
@@ -290,6 +290,7 @@
     if (mod && e.key.toLowerCase() === "k") { e.preventDefault(); if (!shell.hidden) (palette.hidden ? openPalette() : closePalette()); }
     if (e.key === "Escape" && !palette.hidden) closePalette();
     if (e.key === "Escape" && !drawer.hidden) drawer.hidden = true;
+    if (e.key === "Escape" && !mais.hidden) mais.hidden = true;
     if (mod && e.key.toLowerCase() === "s" && !shell.hidden) {
       e.preventDefault();
       // salva o que estiver aberto: editor de link/loja/acesso, senão o formulário da aba
@@ -319,13 +320,40 @@
 
   /* ═══════════ Navegação ═══════════ */
 
+  var TITULOS = { dash: "Visão geral", links: "Links", whatsapp: "Lojas", perfil: "Perfil", redes: "Redes", horario: "Horário", acessos: "Acessos" };
+
+  // um só lugar decide qual aba está ativa (menu lateral, barra de abas e menu "Mais" chamam isto)
+  function ativarAba(tab) {
+    document.querySelectorAll("#nav [data-tab], #tabbar [data-tab]").forEach(function (x) { x.classList.toggle("is-active", x.dataset.tab === tab); });
+    // no celular, Redes/Horário/Acessos vivem em "Mais": acende o "Mais"
+    $("maisBtn").classList.toggle("is-active", ["redes", "horario", "acessos"].indexOf(tab) >= 0);
+    document.querySelectorAll(".panel").forEach(function (p) { p.classList.toggle("is-active", p.dataset.panel === tab); });
+    $("topTitle").textContent = TITULOS[tab] || "";
+    window.scrollTo(0, 0);
+    if (tab === "acessos" && !acessos.length) loadAcessos();
+    if (tab === "dash") { dashCache = {}; loadDash(); }
+  }
+
   $("nav").addEventListener("click", function (e) {
     var b = e.target.closest("[data-tab]");
-    if (!b) return;
-    document.querySelectorAll("#nav button").forEach(function (x) { x.classList.toggle("is-active", x === b); });
-    document.querySelectorAll(".panel").forEach(function (p) { p.classList.toggle("is-active", p.dataset.panel === b.dataset.tab); });
-    if (b.dataset.tab === "acessos" && !acessos.length) loadAcessos();
-    if (b.dataset.tab === "dash") { dashCache = {}; loadDash(); }
+    if (b) ativarAba(b.dataset.tab);
+  });
+  $("tabbar").addEventListener("click", function (e) {
+    var b = e.target.closest("[data-tab]");
+    if (b) ativarAba(b.dataset.tab);
+  });
+
+  var mais = $("mais");
+  $("maisBtn").addEventListener("click", function () { $("maisTema").textContent = NOME_TEMA[temaAtual()]; mais.hidden = false; });
+  mais.addEventListener("click", function (e) {
+    if (e.target.closest("[data-close]")) { mais.hidden = true; return; }
+    var t = e.target.closest("[data-tab]");
+    if (t) { mais.hidden = true; ativarAba(t.dataset.tab); return; }
+    var a = e.target.closest("[data-acao]");
+    if (!a) return;
+    if (a.dataset.acao === "buscar") { mais.hidden = true; openPalette(); }
+    if (a.dataset.acao === "tema") { $("themeBtn").click(); $("maisTema").textContent = NOME_TEMA[temaAtual()]; }
+    if (a.dataset.acao === "sair") { $("logout").click(); }
   });
 
   /* ═══════════ Carregar dados ═══════════ */

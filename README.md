@@ -20,8 +20,9 @@ Os dados ficam no Supabase (projeto "Bio Instagran"). A página pública lê de 
 | **Horário** | Dias, horários e pausa de almoço. A página mostra "Atendendo agora", "Pausa para o almoço" ou quando volta, sempre no horário de **Cuiabá** (UTC−4), não importa onde o visitante esteja. |
 | **Acessos** | Quem pode entrar no painel: criar acesso (e-mail + senha), redefinir a senha de alguém, remover. Cada pessoa também pode trocar a própria senha. |
 
-No computador, o painel mostra uma prévia da página ao lado, que atualiza a cada salvamento; no celular,
-o botão flutuante abre a mesma prévia numa gaveta.
+No computador, o painel mostra uma prévia da página ao lado, que atualiza a cada salvamento; no celular, o painel usa uma
+barra de abas fixa embaixo (Início, Links, Lojas, Perfil, Mais), o botão no topo abre a prévia numa gaveta, e um
+"modo leve" desliga desfoques, luzes animadas e sombras para rodar bem em aparelhos fracos.
 
 Atalhos e agilidade: **Ctrl+K** abre a busca rápida (ir para uma aba, abrir um link ou uma loja, criar
 link/seção/promoção); **Ctrl+S** salva o que estiver aberto; apagar um link ou loja mostra "Desfazer" por

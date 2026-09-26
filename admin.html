@@ -79,6 +79,15 @@
       </div>
     </aside>
 
+    <!-- barra superior (só celular) -->
+    <header class="topbar">
+      <img src="assets/logo.png" alt="" />
+      <span class="topbar__title" id="topTitle">Visão geral</span>
+      <button class="topbar__btn" id="topPreview" type="button" aria-label="Ver prévia da página">
+        <svg viewBox="0 0 24 24"><rect x="7" y="2.5" width="10" height="19" rx="2.5"/><path d="M11 18h2"/></svg>
+      </button>
+    </header>
+
     <main class="work">
 
       <!-- ── Visão geral ── -->
@@ -346,10 +355,32 @@
     </div>
   </div>
 
-  <!-- ══════════ Prévia no celular ══════════ -->
-  <button class="fab" id="fabPreview" type="button" aria-label="Ver prévia da página">
-    <svg viewBox="0 0 24 24"><rect x="7" y="2.5" width="10" height="19" rx="2.5"/><path d="M11 18h2"/></svg>
-  </button>
+  <!-- ══════════ Barra de abas (só celular) ══════════ -->
+  <nav class="tabbar" id="tabbar" aria-label="Seções">
+    <button data-tab="dash" class="is-active"><svg viewBox="0 0 24 24"><path d="M4 19V10M10 19V5M16 19v-8M22 19H2"/></svg><span>Início</span></button>
+    <button data-tab="links"><svg viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h10"/></svg><span>Links</span></button>
+    <button data-tab="whatsapp"><svg viewBox="0 0 24 24"><path d="M3 21h18M5 21V8l7-4 7 4v13M9 21v-6h6v6"/></svg><span>Lojas</span></button>
+    <button data-tab="perfil"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c.8-4 4-6.5 8-6.5s7.2 2.5 8 6.5"/></svg><span>Perfil</span></button>
+    <button id="maisBtn"><svg viewBox="0 0 24 24"><circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/></svg><span>Mais</span></button>
+  </nav>
+
+  <!-- ══════════ Menu "Mais" (só celular) ══════════ -->
+  <div class="modal" id="mais" hidden>
+    <div class="modal__backdrop" data-close></div>
+    <div class="modal__panel mais" role="dialog" aria-modal="true" aria-label="Mais opções">
+      <button class="modal__x" type="button" data-close aria-label="Fechar"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
+      <h2>Mais</h2>
+      <div class="mais__grid">
+        <button type="button" data-tab="redes"><svg viewBox="0 0 24 24"><circle cx="18" cy="5" r="2.5"/><circle cx="6" cy="12" r="2.5"/><circle cx="18" cy="19" r="2.5"/><path d="m8.2 10.8 7.6-4.4M8.2 13.2l7.6 4.4"/></svg>Redes</button>
+        <button type="button" data-tab="horario"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>Horário</button>
+        <button type="button" data-tab="acessos"><svg viewBox="0 0 24 24"><rect x="4" y="10" width="16" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>Acessos</button>
+        <button type="button" data-acao="buscar"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="m20 20-4.2-4.2"/></svg>Buscar</button>
+        <button type="button" data-acao="tema"><svg viewBox="0 0 24 24"><path d="M20 14.5A8.5 8.5 0 0 1 9.5 4a8.5 8.5 0 1 0 10.5 10.5z"/></svg><span id="maisTema">Tema</span></button>
+        <a href="index.html" target="_blank" rel="noopener"><svg viewBox="0 0 24 24"><path d="M7 17 17 7M8 7h9v9"/></svg>Ver página</a>
+      </div>
+      <button type="button" class="mais__sair" data-acao="sair">Sair da conta</button>
+    </div>
+  </div>
   <div class="drawer" id="drawer" hidden>
     <div class="drawer__backdrop" data-close></div>
     <div class="drawer__panel">

@@ -548,7 +548,7 @@ kbd, .kbd-inline {
 .bar__fill { height: 100%; width: 0; border-radius: 6px; background: var(--plum); transition: width .6s var(--ease-swing); }
 .bars .empty { padding: 8px 0; font-size: .82rem; text-align: left; }
 
-@media (max-width: 1100px) { .tiles { grid-template-columns: repeat(2, 1fr); } }
+@media (min-width: 721px) and (max-width: 1100px) { .tiles { grid-template-columns: repeat(2, 1fr); } }
 @media (max-width: 720px) { .tiles, .cards { grid-template-columns: 1fr; } .tile--hero .tile__value { font-size: 2.2rem; } }
 
 /* ─── Relâmpago ──────────────────────────── */
@@ -617,7 +617,120 @@ kbd, .kbd-inline {
 .drawer__bar { display: flex; align-items: center; justify-content: space-between; padding: 12px 14px 10px 18px; font-size: .88rem; color: var(--muted); }
 .drawer__bar .modal__x { position: static; }
 .drawer__panel iframe { flex: 1; border: 0; background: var(--bg); }
-@media (max-width: 1100px) { .fab { display: grid; } }
+
+
+/* barra superior e barra de abas: só no celular */
+.topbar, .tabbar { display: none; }
+
+/* ═══════════════════════════════════════════════════════════
+   CELULAR (≤ 720px): navegação por barra de abas embaixo,
+   e "modo leve": sem desfoque, sem luzes animadas, sem sombras pesadas
+   ═══════════════════════════════════════════════════════════ */
+@media (max-width: 720px) {
+  .shell { grid-template-columns: 1fr; }
+  .side, .preview, .fab { display: none !important; }
+  .aurora { display: none; }
+  body { background: var(--bg); }
+
+  /* desliga o vidro: fundo sólido é muito mais leve para a GPU */
+  .row, .tile, .card, .insight, .gate__card, .modal__panel, .palette, .side__theme, .side__search {
+    -webkit-backdrop-filter: none; backdrop-filter: none;
+    background: var(--paper); box-shadow: none; border-color: var(--line);
+  }
+  .tile--hero { background: var(--plum); }
+  .panel.is-active { animation: none; }
+  .row { transition: none; }
+
+  .topbar {
+    position: sticky; top: 0; z-index: 6;
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px 14px;
+    padding-top: max(10px, env(safe-area-inset-top));
+    background: var(--paper);
+    border-bottom: 1px solid var(--line);
+  }
+  .topbar img { width: 34px; height: auto; }
+  .topbar__title { flex: 1; font-family: var(--display); font-style: italic; font-size: 1.15rem; color: var(--plum); }
+  .topbar__btn {
+    display: grid; place-items: center; width: 40px; height: 40px;
+    border: 1px solid var(--line); border-radius: 50%;
+    background: var(--paper); color: var(--plum);
+  }
+  .topbar__btn svg { width: 18px; height: 18px; }
+
+  .tabbar {
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: 12;
+    display: grid; grid-template-columns: repeat(5, 1fr);
+    padding-bottom: env(safe-area-inset-bottom);
+    background: var(--paper);
+    border-top: 1px solid var(--line);
+  }
+  .tabbar button {
+    display: grid; justify-items: center; gap: 3px;
+    padding: 8px 2px 7px;
+    border: 0; background: none;
+    color: var(--muted); font: 500 .68rem var(--body); letter-spacing: .01em;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .tabbar button svg { width: 22px; height: 22px; }
+  .tabbar button.is-active { color: var(--plum); }
+  .tabbar button.is-active svg { stroke-width: 2; }
+
+  .work { padding: 16px 14px calc(72px + env(safe-area-inset-bottom)); }
+  .panel__head { margin-bottom: 14px; }
+  .panel__head h1 { font-size: 1.35rem; }
+  .panel__head p { font-size: .84rem; }
+  .panel__actions { width: 100%; }
+  .panel__actions .btn { flex: 1; justify-content: center; min-height: 44px; }
+  .btn { min-height: 44px; }
+  .row { padding: 12px 12px 12px 6px; }
+  .row__top { opacity: 1; }
+  .row__clicks { display: none; }
+  .spark { display: none; }
+  .switch { width: 44px; height: 26px; }
+  .switch span::after { width: 20px; height: 20px; }
+  .switch input:checked + span::after { transform: translateX(18px); }
+  .rows--dias .row { grid-template-columns: 44px 1fr; grid-template-areas: "sw nome" "sw horas" "sw almoco"; gap: 6px 12px; padding: 12px; }
+  .dia__times, .dia__lunch { flex-wrap: wrap; gap: 6px; }
+  .form .rows--dias .row input[type="time"] { width: 92px; padding: 5px 6px; font-size: .9rem; }
+  .row--dia.is-off .dia__lunch { display: none; }
+  .row--dia.is-off .dia__times { opacity: .5; }
+  /* o título já está na barra de cima; só a Visão geral mantém a saudação */
+  .panel:not([data-panel="dash"]) .panel__head h1 { display: none; }
+  .row__title { font-size: .95rem; }
+  .row__top { width: 24px; height: 24px; }
+
+  /* janelas viram folhas que sobem de baixo */
+  .modal__panel {
+    left: 0; right: 0; top: auto; bottom: 0;
+    width: 100%; max-height: 92dvh;
+    transform: none;
+    border-radius: 22px 22px 0 0;
+    padding: 22px 16px calc(16px + env(safe-area-inset-bottom));
+    animation: rise .35s var(--ease-swing);
+  }
+  .modal__foot { flex-wrap: wrap; }
+  .modal__foot .btn { flex: 1; justify-content: center; }
+  .palette { top: max(12px, env(safe-area-inset-top)); left: 12px; right: 12px; width: auto; transform: none; }
+  .palette__list { max-height: 60dvh; }
+  .drawer__panel { height: 90dvh; }
+  .tiles, .cards { grid-template-columns: 1fr; }
+  .tile--hero .tile__value { font-size: 2.2rem; }
+  .chart { height: 150px; }
+}
+
+/* menu "Mais" */
+.mais h2 { color: var(--plum); font-family: var(--body); font-style: normal; font-weight: 500; font-size: 1.1rem; margin-bottom: 14px; }
+.mais__grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.mais__grid > * {
+  display: grid; justify-items: center; gap: 8px;
+  padding: 14px 6px;
+  border: 1px solid var(--line); border-radius: 14px;
+  background: var(--bg); color: var(--ink);
+  font: 500 .82rem var(--body); text-decoration: none; text-align: center;
+}
+.mais__grid svg { width: 22px; height: 22px; color: var(--plum); }
+.mais__sair { width: 100%; margin-top: 14px; padding: 12px; border: 0; border-radius: 12px; background: rgba(178, 58, 72, .08); color: var(--red); font: 500 .9rem var(--body); }
 
 /* ─── Toast com ação (Desfazer) ──────────── */
 .toast button {
@@ -643,36 +756,9 @@ kbd, .kbd-inline {
 
 /* ─── Responsivo ─────────────────────────── */
 
-@media (max-width: 1100px) {
+@media (min-width: 721px) and (max-width: 1100px) {
   .shell { grid-template-columns: 210px minmax(0, 1fr); }
   .preview { display: none; }
 }
 
-@media (max-width: 720px) {
-  .shell { grid-template-columns: 1fr; }
-  .side {
-    position: sticky; top: 0; height: auto; z-index: 5;
-    min-width: 0; /* senão a fileira de abas alarga a página inteira */
-    flex-direction: row; align-items: center; gap: 10px;
-    padding: 10px 12px;
-    border-right: 0; border-bottom: 1px solid var(--line);
-  }
-  .side__brand { padding: 0; }
-  .side__brand span { display: none; }
-  .side__brand img { width: 40px; }
-  .side__nav { display: flex; gap: 2px; flex: 1; min-width: 0; overflow-x: auto; scrollbar-width: none; }
-  .side__nav::-webkit-scrollbar { display: none; }
-  .side__nav button { padding: 8px 10px; font-size: .88rem; white-space: nowrap; }
-  .side__nav button svg { display: none; }
-  .side__foot { margin: 0; padding: 0; display: flex; align-items: center; gap: 10px; flex: none; }
-  .side__search, .side__theme { width: 34px; height: 34px; padding: 0; justify-content: center; border-radius: 50%; }
-  .side__search span, .side__search kbd, .side__theme span { display: none; }
-  /* no celular, "Ver página" e "Sair" viram só ícones */
-  .side__view { font-size: 0; width: 34px; height: 34px; display: grid; place-items: center; border: 1px solid var(--plum-line); border-radius: 50%; }
-  .side__view svg { width: 15px; height: 15px; }
-  #logout { font-size: .85rem; }
-  .work { padding: 22px 16px 50px; }
-  .row__clicks { display: none; }
-  .rows--dias .row { grid-template-columns: 40px 70px minmax(0, 1fr); }
-  .dia__times { flex-wrap: wrap; }
 }
