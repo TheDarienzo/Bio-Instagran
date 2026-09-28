@@ -1025,28 +1025,56 @@
     (navigator.clipboard ? navigator.clipboard.writeText(url) : Promise.reject()).then(function () { toast("Link copiado"); }, function () { toast(url); });
   });
 
-  $("dashPeriod").addEventListener("change", function () { loadDash(); });
+  // Período escolhido: {inicio, fim (fim do dia), dias}
+  function periodoAtual() {
+    var tipo = document.querySelector("#dashPeriod input:checked").value;
+    var hoje = new Date(); hoje.setHours(0, 0, 0, 0);
+    var inicio, fim = new Date(hoje);
+    if (tipo === "mes") { inicio = new Date(hoje.getFullYear(), hoje.getMonth(), 1); }
+    else if (tipo === "custom") {
+      var de = $("periodDe").value, ate = $("periodAte").value;
+      if (!de || !ate) return null;
+      inicio = new Date(de + "T00:00:00"); fim = new Date(ate + "T00:00:00");
+      if (fim < inicio) { var t = inicio; inicio = fim; fim = t; }
+      if (fim > hoje) fim = new Date(hoje);
+    } else { inicio = new Date(hoje); inicio.setDate(inicio.getDate() - (+tipo) + 1); }
+    var dias = Math.round((fim - inicio) / 864e5) + 1;
+    var fimDia = new Date(fim); fimDia.setHours(23, 59, 59, 999);
+    return { inicio: inicio, fim: fimDia, dias: dias, ateHoje: fim.getTime() === hoje.getTime() };
+  }
+
+  $("dashPeriod").addEventListener("change", function () {
+    var custom = document.querySelector("#dashPeriod input:checked").value === "custom";
+    $("periodCustom").hidden = !custom;
+    if (custom && !$("periodDe").value) {
+      var h = new Date(), d = new Date(h.getFullYear(), h.getMonth() - 1, 1);
+      $("periodDe").value = d.toISOString().slice(0, 10);
+      $("periodAte").value = new Date(h.getFullYear(), h.getMonth(), 0).toISOString().slice(0, 10);
+    }
+    loadDash();
+  });
+  $("periodCustom").addEventListener("change", function () { loadDash(); });
 
   function fmtNum(n) { return n.toLocaleString("pt-BR"); }
   function pct(a, b) { return b ? Math.round((a - b) / b * 100) : null; }
 
   function loadDash() {
     saudacao();
-    var dias = +document.querySelector("#dashPeriod input:checked").value;
-    var agora = new Date();
-    var inicio = new Date(agora); inicio.setDate(inicio.getDate() - dias + 1); inicio.setHours(0, 0, 0, 0);
+    var per = periodoAtual();
+    if (!per) return;
+    var inicio = per.inicio, fim = per.fim, dias = per.dias;
     var anterior = new Date(inicio); anterior.setDate(anterior.getDate() - dias);
-    var chave = dias + ":" + inicio.toDateString();
+    var chave = inicio.toDateString() + ":" + fim.toDateString();
 
     var p = dashCache[chave] || Promise.all([
-      sb.from("visitas").select("visitante,criado_em,dispositivo,sistema,navegador,cidade,estado,pais,origem").gte("criado_em", anterior.toISOString()).order("criado_em").limit(20000),
-      sb.from("cliques").select("link_id,criado_em").gte("criado_em", anterior.toISOString()).limit(20000),
+      sb.from("visitas").select("visitante,criado_em,dispositivo,sistema,navegador,cidade,estado,pais,origem").gte("criado_em", anterior.toISOString()).lte("criado_em", fim.toISOString()).order("criado_em").limit(20000),
+      sb.from("cliques").select("link_id,criado_em").gte("criado_em", anterior.toISOString()).lte("criado_em", fim.toISOString()).limit(20000),
     ]);
     dashCache[chave] = p;
 
     p.then(function (res) {
       var visitas = res[0].data || [], cliques = res[1].data || [];
-      var atual = function (r) { return new Date(r.criado_em) >= inicio; };
+      var atual = function (r) { var d = new Date(r.criado_em); return d >= inicio && d <= fim; };
       var vA = visitas.filter(atual), vP = visitas.filter(function (r) { return !atual(r); });
       var cA = cliques.filter(atual), cP = cliques.filter(function (r) { return !atual(r); });
       var unicos = function (arr) { var s = {}; arr.forEach(function (r) { s[r.visitante] = 1; }); return Object.keys(s).length; };
@@ -1068,13 +1096,13 @@
       var nomes = {}; links.forEach(function (l) { nomes[l.id] = l.titulo; });
       renderBars("linkBars", porLink, nomes, 8);
 
-      renderInsights(vA, vP, cA, cP, nomes, dias);
-      dashDados = { visitas: vA, cliques: cA, nomes: nomes, dias: dias };
+      renderInsights(vA, vP, cA, cP, nomes, dias, per.ateHoje);
+      dashDados = { visitas: vA, cliques: cA, nomes: nomes, dias: dias, inicio: inicio, fim: fim };
     }).catch(function (err) { toast(erroMsg(err), true); });
   }
 
   /* ─── Alertas: frases prontas sobre o período ─── */
-  function renderInsights(vA, vP, cA, cP, nomes, dias) {
+  function renderInsights(vA, vP, cA, cP, nomes, dias, ateHoje) {
     var out = [];
     var DIAS_N = ["domingo", "segunda", "terça", "quarta", "quinta", "sexta", "sábado"];
 
@@ -1091,7 +1119,7 @@
     var ontem = new Date(); ontem.setDate(ontem.getDate() - 1); var kO = ontem.toDateString();
     var nOntem = vA.filter(function (v) { return new Date(v.criado_em).toDateString() === kO; }).length;
     var mediaDia = vA.length / dias;
-    if (vA.length >= 7 && mediaDia > 0) {
+    if (ateHoje && vA.length >= 7 && mediaDia > 0) {
       var dif = Math.round((nOntem - mediaDia) / mediaDia * 100);
       if (dif >= 30) out.push({ t: "Ontem teve " + nOntem + " visitas, " + dif + "% acima da média", i: "▲", c: "is-good" });
       else if (dif <= -30) out.push({ t: "Ontem teve " + nOntem + " visitas, " + Math.abs(dif) + "% abaixo da média", i: "▼", c: "is-bad" });
@@ -1130,7 +1158,7 @@
     var csv = "﻿" + linhas.map(function (l) { return l.map(function (c) { return '"' + String(c == null ? "" : c).replace(/"/g, '""') + '"'; }).join(";"); }).join("\r\n");
     var a = document.createElement("a");
     a.href = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
-    a.download = "rayane-store-" + dashDados.dias + "dias-" + new Date().toISOString().slice(0, 10) + ".csv";
+    a.download = "rayane-store-" + dashDados.inicio.toISOString().slice(0, 10) + "_a_" + dashDados.fim.toISOString().slice(0, 10) + ".csv";
     document.body.appendChild(a); a.click();
     setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 500);
     toast("Planilha baixada");
@@ -1140,7 +1168,7 @@
     document.querySelector('[data-k="' + k + '"]').textContent = valor;
     var el = document.querySelector('[data-k="' + k + 'Delta"]');
     el.className = "tile__delta" + (delta > 0 ? " is-up" : delta < 0 ? " is-down" : "");
-    el.textContent = delta == null ? "sem base de comparação" : (delta > 0 ? "▲ " : delta < 0 ? "▼ " : "= ") + Math.abs(delta) + "% vs. " + dias + " dias antes";
+    el.textContent = delta == null ? "sem base de comparação" : (delta > 0 ? "▲ " : delta < 0 ? "▼ " : "= ") + Math.abs(delta) + "% vs. os " + dias + " dias anteriores";
   }
 
   function contar(arr, campo) {

@@ -10,8 +10,8 @@
   <!-- Política de segurança: só scripts deste site; conexões só com o Supabase -->
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://*.supabase.co https://www.google.com; font-src 'self'; connect-src 'self' https://*.supabase.co wss://*.supabase.co; frame-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; upgrade-insecure-requests" />
   <meta name="referrer" content="strict-origin-when-cross-origin" />
-  <link rel="stylesheet" href="admin.css?v=202609282028" />
-  <script src="theme.js?v=202609282028"></script>
+  <link rel="stylesheet" href="admin.css?v=202609282031" />
+  <script src="theme.js?v=202609282031"></script>
 </head>
 <body>
 
@@ -97,10 +97,16 @@
             <h1 id="dashHello">Visão geral</h1>
             <p id="dashDate"></p>
           </div>
-          <div class="seg seg--sm" id="dashPeriod">
-            <label><input type="radio" name="periodo" value="7" /><span>7 dias</span></label>
-            <label><input type="radio" name="periodo" value="30" checked /><span>30 dias</span></label>
-            <label><input type="radio" name="periodo" value="90" /><span>90 dias</span></label>
+          <div class="period">
+            <div class="seg seg--sm" id="dashPeriod">
+              <label><input type="radio" name="periodo" value="mes" checked /><span>Este mês</span></label>
+              <label><input type="radio" name="periodo" value="7" /><span>7 dias</span></label>
+              <label><input type="radio" name="periodo" value="30" /><span>30 dias</span></label>
+              <label><input type="radio" name="periodo" value="custom" /><span>Escolher</span></label>
+            </div>
+            <div class="period__custom" id="periodCustom" hidden>
+              <input type="date" id="periodDe" aria-label="Data inicial" /> <span>até</span> <input type="date" id="periodAte" aria-label="Data final" />
+            </div>
           </div>
         </header>
 
@@ -439,9 +445,9 @@
 
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
-  <script src="assets/vendor/supabase.js?v=202609282028"></script>
-  <script src="supabase-config.js?v=202609282028"></script>
-  <script src="icons.js?v=202609282028"></script>
-  <script src="admin.js?v=202609282028"></script>
+  <script src="assets/vendor/supabase.js?v=202609282031"></script>
+  <script src="supabase-config.js?v=202609282031"></script>
+  <script src="icons.js?v=202609282031"></script>
+  <script src="admin.js?v=202609282031"></script>
 </body>
 </html>
