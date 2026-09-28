@@ -1162,7 +1162,13 @@
     requestAnimationFrame(function () { box.querySelectorAll(".bar__fill").forEach(function (f) { f.style.width = f.dataset.w + "%"; }); });
   }
 
-  // colunas por dia: <=24px de largura, topo arredondado, tooltip ao passar
+  var ultimoGrafico = null, resizeTimer;
+  window.addEventListener("resize", function () {
+    clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(function () { if (ultimoGrafico) renderChart(ultimoGrafico.visitas, ultimoGrafico.inicio, ultimoGrafico.dias); }, 150);
+  });
+
+  // colunas por dia: <=24px de largura, topo arredondado, valor em cima, tooltip ao passar
   function renderChart(visitas, inicio, dias) {
     var porDia = {};
     for (var i = 0; i < dias; i++) { var d = new Date(inicio); d.setDate(d.getDate() + i); porDia[d.toDateString()] = { d: d, n: 0, u: {} }; }
@@ -1172,10 +1178,14 @@
     var teto = maxN <= 5 ? 5 : Math.ceil(maxN / 5) * 5;
     $("chartSub").textContent = fmtNum(visitas.length) + " visitas · pico de " + maxN + " num dia";
 
-    var W = 600, H = 180, L = 28, B = 22, T = 8;
+    // desenha na largura real (em pixels) para o texto não esticar; refaz ao redimensionar
+    var box = $("chart");
+    var W = Math.max(280, box.clientWidth || 600), H = box.clientHeight || 180, L = 28, B = 22, T = 16;
     var slot = (W - L) / dias, bw = Math.min(24, slot * .7);
     var y = function (n) { return T + (H - T - B) * (1 - n / teto); };
-    var svg = '<svg viewBox="0 0 ' + W + " " + H + '" preserveAspectRatio="none">';
+    var rotulaTodos = slot >= 18; // cabe um número em cada coluna?
+    var iMax = serie.reduce(function (m, s, i) { return s.n > serie[m].n ? i : m; }, 0);
+    var svg = '<svg viewBox="0 0 ' + W + " " + H + '" width="' + W + '" height="' + H + '">';
     [0, .5, 1].forEach(function (f) {
       var v = Math.round(teto * f), yy = y(v);
       svg += '<line class="grid" x1="' + L + '" x2="' + W + '" y1="' + yy + '" y2="' + yy + '"/><text class="axis" x="' + (L - 6) + '" y="' + (yy + 3) + '" text-anchor="end">' + v + "</text>";
@@ -1185,13 +1195,17 @@
       var r = Math.min(4, bw / 2, h);
       var path = h > 0 ? "M" + x + " " + y(0) + "v-" + (h - r) + "a" + r + " " + r + " 0 0 1 " + r + " -" + r + "h" + (bw - 2 * r) + "a" + r + " " + r + " 0 0 1 " + r + " " + r + "v" + (h - r) + "z" : "";
       svg += '<path class="col" d="' + path + '"/>';
+      // valor em cima da coluna (todos quando cabe; senão só o pico e o último dia)
+      if (s.n > 0 && (rotulaTodos || i === iMax || i === dias - 1)) {
+        svg += '<text class="val" x="' + (x + bw / 2) + '" y="' + (top - 4) + '" text-anchor="middle">' + s.n + "</text>";
+      }
       svg += '<rect class="hit" x="' + (L + slot * i) + '" y="' + T + '" width="' + slot + '" height="' + (H - T) + '" data-i="' + i + '"/>';
-      var passo = dias <= 7 ? 1 : dias <= 30 ? 5 : 15;
+      var passo = dias <= 7 ? 1 : dias <= 30 ? (slot >= 22 ? 2 : 5) : 15;
       if (i % passo === 0 || i === dias - 1) svg += '<text class="axis" x="' + (x + bw / 2) + '" y="' + (H - 6) + '" text-anchor="middle">' + s.d.getDate() + "/" + (s.d.getMonth() + 1) + "</text>";
     });
     svg += "</svg>";
-    var box = $("chart");
     box.innerHTML = svg;
+    ultimoGrafico = { visitas: visitas, inicio: inicio, dias: dias };
 
     var tip = $("chartTip");
     box.onmousemove = function (e) {
