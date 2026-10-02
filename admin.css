@@ -557,6 +557,19 @@ kbd, .kbd-inline {
 @media (min-width: 721px) and (max-width: 1100px) { .tiles { grid-template-columns: repeat(2, 1fr); } }
 @media (max-width: 720px) { .tiles, .cards { grid-template-columns: 1fr; } .tile--hero .tile__value { font-size: 2.2rem; } }
 
+/* ─── Vitrine ────────────────────────────── */
+.rows--vitrine { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
+.rows--vitrine .row { grid-template-columns: 1fr; grid-template-rows: auto auto; gap: 0; padding: 0; overflow: hidden; }
+.rows--vitrine .row__handle { position: absolute; top: 6px; left: 6px; z-index: 1; padding: 4px; border-radius: 8px; background: rgba(255,255,255,.85); color: var(--muted); }
+.rows--vitrine .row { position: relative; }
+.rows--vitrine .row .switch { position: absolute; top: 8px; right: 8px; z-index: 1; }
+.rows--vitrine .row__body { padding: 8px 10px 10px; }
+.rows--vitrine img { display: block; width: 100%; aspect-ratio: 4 / 5; object-fit: cover; background: var(--bg); cursor: pointer; }
+.rows--vitrine .row__title { font-size: .88rem; white-space: normal; }
+.rows--vitrine .row.is-uploading img { opacity: .4; }
+.showcase-prev { display: grid; place-items: center; }
+.showcase-prev img { width: 140px; aspect-ratio: 4 / 5; object-fit: cover; border-radius: 12px; background: var(--bg); }
+
 /* ─── Relâmpago ──────────────────────────── */
 .btn--flash { border-color: #e7b98a; color: #b2601c; background: #fff7ee; }
 .btn--flash:hover { background: #ffedd6; }

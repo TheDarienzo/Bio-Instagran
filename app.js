@@ -3,7 +3,7 @@
 
   var ICONS = window.ICONS;
   var API = window.API;
-  var ARROW = '<svg class="tag__go" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 17 17 7M8 7h9v9"/></svg>';
+  var ARROW = '<span class="tag__go"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 17 17 7M8 7h9v9"/></svg></span>';
   var CACHE = "rs_pagina_v1";
 
   /* ─── Modo leve: aparelho fraco, economia de dados ou "reduzir movimento" ─── */
@@ -17,7 +17,7 @@
   } catch (e) {}
   if (lite) document.documentElement.classList.add("lite");
 
-  var conf = {}, whatsapps = [], redes = [], links = [];
+  var conf = {}, whatsapps = [], redes = [], links = [], destaques = [];
   var pageUrl = location.href.split("#")[0].split("?")[0];
   var pronto = false; // interações já ligadas?
 
@@ -81,6 +81,7 @@
     conf = d.conf || {};
     redes = d.redes || [];
     links = d.links || [];
+    destaques = d.destaques || [];
     whatsapps = (d.whatsapps || []).filter(function (w) { return digits(w.numero) || w.endereco || w.mapa_url; });
     if (conf.url) pageUrl = conf.url;
     render();
@@ -111,6 +112,25 @@
     }).join("");
     socials.hidden = !socials.children.length;
 
+    /* Vitrine */
+    var wrap = document.getElementById("showcaseWrap");
+    var comWa = lojasComNumero();
+    var cards = destaques.map(function (c) {
+      var href = c.url, extra = "";
+      if (!href) {
+        if (!comWa.length) return "";
+        if (comWa.length === 1) href = waLink(comWa[0], c.whatsapp_mensagem || ("Oi! Vi \"" + c.titulo + "\" na página e quero saber mais 💜"));
+        else { href = "#"; extra = ' data-filiais data-msg="' + esc(c.whatsapp_mensagem || ("Oi! Vi \"" + c.titulo + "\" na página e quero saber mais 💜")) + '"'; }
+      }
+      return '<a class="card" href="' + esc(href) + '"' + extra + (isExternal(href) ? ' target="_blank" rel="noopener"' : "") + ">" +
+        '<img src="' + esc(c.imagem_url) + '" alt="' + esc(c.titulo) + '" loading="lazy" decoding="async" width="300" height="375">' +
+        '<span class="card__go">' + ARROW.replace('class="tag__go"', "") + "</span>" +
+        '<span class="card__body"><span class="card__title">' + esc(c.titulo) + "</span>" +
+        (c.legenda ? '<span class="card__sub">' + esc(c.legenda) + "</span>" : "") + "</span></a>";
+    }).join("");
+    document.getElementById("showcase").innerHTML = cards;
+    wrap.hidden = !cards;
+
     /* Links */
     var now = new Date();
     var items = [];
@@ -127,7 +147,7 @@
     });
 
     document.getElementById("links").innerHTML = items.map(function (it, i) {
-      if (it.tipo === "secao") return '<li class="section" role="presentation" style="--i:' + i + '">' + esc(it.titulo) + "</li>";
+      if (it.tipo === "secao") return '<li class="section" role="presentation" style="--i:' + i + '"><p class="eyebrow">' + esc(it.titulo) + "</p></li>";
       return '<li class="' + (it.destaque ? "is-featured" : "") + '" style="--i:' + i + '">' +
         '<a class="tag' + (it.destaque ? " tag--featured" : "") + '" href="' + esc(it.href) + '" data-id="' + esc(it.id) + '"' +
         (it.href === "#filiais" ? ' data-filiais data-msg="' + esc(it.whatsapp_mensagem) + '"' : "") +
@@ -289,30 +309,6 @@
       document.head.appendChild(s);
     }
 
-    // ondulação ao tocar e inclinação 3D no computador (nunca no modo leve)
-    if (lite) return;
-    document.getElementById("links").addEventListener("pointerdown", function (e) {
-      var a = e.target.closest("a.tag"); if (!a) return;
-      var r = a.getBoundingClientRect(), tam = Math.max(r.width, r.height) * 1.6;
-      var s = document.createElement("span"); s.className = "ripple";
-      s.style.width = s.style.height = tam + "px";
-      s.style.left = (e.clientX - r.left - tam / 2) + "px"; s.style.top = (e.clientY - r.top - tam / 2) + "px";
-      a.appendChild(s); setTimeout(function () { s.remove(); }, 650);
-    });
-    if (!window.matchMedia("(hover: hover) and (pointer: fine)").matches) return;
-    var rack = document.querySelector(".rack"), alvo = { x: 0, y: 0 }, atual = { x: 0, y: 0 }, raf = null;
-    function anima() {
-      atual.x += (alvo.x - atual.x) * .16; atual.y += (alvo.y - atual.y) * .16;
-      rack.style.transform = "perspective(1100px) rotateX(" + atual.x.toFixed(2) + "deg) rotateY(" + atual.y.toFixed(2) + "deg)";
-      raf = (Math.abs(alvo.x - atual.x) > .01 || Math.abs(alvo.y - atual.y) > .01) ? requestAnimationFrame(anima) : null;
-    }
-    document.addEventListener("pointermove", function (e) {
-      var r = rack.getBoundingClientRect();
-      alvo.y = (e.clientX - (r.left + r.width / 2)) / r.width * 2.2;
-      alvo.x = -(e.clientY - (r.top + r.height / 2)) / r.height * 1.6;
-      if (!raf) raf = requestAnimationFrame(anima);
-    });
-    document.addEventListener("pointerleave", function () { alvo.x = alvo.y = 0; if (!raf) raf = requestAnimationFrame(anima); });
   }
 
   /* ─── Medição anônima (sem IP, sem nome) ─── */

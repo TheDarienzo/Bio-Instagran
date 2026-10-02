@@ -20,15 +20,15 @@
 
   <link rel="preconnect" href="https://dzaritftijhlcjdenjir.supabase.co" crossorigin />
   <link rel="preload" href="assets/fonts/jost.woff2" as="font" type="font/woff2" crossorigin />
-  <link rel="stylesheet" href="styles.css?v=202609282031" />
+  <link rel="stylesheet" href="styles.css?v=202610022009" />
 </head>
 <body>
-  <div class="aurora" aria-hidden="true"><i></i><i></i><i></i></div>
   <button class="share-btn" id="shareBtn" type="button" aria-label="Compartilhar esta página">
     <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12M7.5 7.5 12 3l4.5 4.5M5 13v6a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-6"/></svg>
   </button>
 
   <main class="page">
+    <div class="halo" aria-hidden="true"></div>
     <header class="profile">
       <h1 class="logo">
         <img src="assets/logo.png" width="480" height="393" alt="Rayane Store" fetchpriority="high" />
@@ -39,8 +39,12 @@
       <nav class="socials" id="socials" aria-label="Redes sociais"></nav>
     </header>
 
+    <section id="showcaseWrap" hidden aria-label="Destaques">
+      <p class="eyebrow">Destaques</p>
+      <div class="showcase" id="showcase"></div>
+    </section>
+
     <section class="rack" aria-label="Links">
-      <div class="rail" aria-hidden="true"></div>
       <ul class="links" id="links"></ul>
     </section>
 
@@ -98,9 +102,9 @@
 
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
-  <script src="supabase-config.js?v=202609282031" defer></script>
-  <script src="api.js?v=202609282031" defer></script>
-  <script src="icons.js?v=202609282031" defer></script>
-  <script src="app.js?v=202609282031" defer></script>
+  <script src="supabase-config.js?v=202610022009" defer></script>
+  <script src="api.js?v=202610022009" defer></script>
+  <script src="icons.js?v=202610022009" defer></script>
+  <script src="app.js?v=202610022009" defer></script>
 </body>
 </html>

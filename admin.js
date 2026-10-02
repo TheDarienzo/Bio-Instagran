@@ -11,6 +11,8 @@
   var redes = [];
   var whatsapps = [];
   var acessos = [];
+  var destaques = [];
+  var editingShowcase = null;
   var editing = null;   // link em edição
   var editingWa = null; // whatsapp em edição
   var editingAccess = null; // acesso em edição (redefinir senha)
@@ -236,7 +238,7 @@
     link: '<svg viewBox="0 0 24 24"><path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/></svg>',
     acao: '<svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>',
   };
-  var TABS = { dash: "Visão geral", links: "Links", whatsapp: "Lojas", perfil: "Perfil", redes: "Redes", horario: "Horário", acessos: "Acessos" };
+  var TABS = { dash: "Visão geral", links: "Links", vitrine: "Vitrine", whatsapp: "Lojas", perfil: "Perfil", redes: "Redes", horario: "Horário", acessos: "Acessos" };
 
   function goTab(tab) { ativarAba(tab); }
 
@@ -320,13 +322,13 @@
 
   /* ═══════════ Navegação ═══════════ */
 
-  var TITULOS = { dash: "Visão geral", links: "Links", whatsapp: "Lojas", perfil: "Perfil", redes: "Redes", horario: "Horário", acessos: "Acessos" };
+  var TITULOS = { dash: "Visão geral", links: "Links", vitrine: "Vitrine", whatsapp: "Lojas", perfil: "Perfil", redes: "Redes", horario: "Horário", acessos: "Acessos" };
 
   // um só lugar decide qual aba está ativa (menu lateral, barra de abas e menu "Mais" chamam isto)
   function ativarAba(tab) {
     document.querySelectorAll("#nav [data-tab], #tabbar [data-tab]").forEach(function (x) { x.classList.toggle("is-active", x.dataset.tab === tab); });
     // no celular, Redes/Horário/Acessos vivem em "Mais": acende o "Mais"
-    $("maisBtn").classList.toggle("is-active", ["redes", "horario", "acessos"].indexOf(tab) >= 0);
+    $("maisBtn").classList.toggle("is-active", ["vitrine", "redes", "horario", "acessos"].indexOf(tab) >= 0);
     document.querySelectorAll(".panel").forEach(function (p) { p.classList.toggle("is-active", p.dataset.panel === tab); });
     $("topTitle").textContent = TITULOS[tab] || "";
     window.scrollTo(0, 0);
@@ -368,7 +370,10 @@
       sb.from("links").select("*").order("ordem"),
       sb.from("whatsapps").select("*").order("ordem"),
       sb.from("cliques").select("link_id,criado_em").gte("criado_em", d7.toISOString()).limit(10000),
+      sb.from("destaques").select("*").order("ordem"),
     ]).then(function (res) {
+      destaques = res[5].data || [];
+      renderShowcase();
       conf = res[0].data || { id: 1, horario: {} };
       redes = res[1].data || [];
       links = res[2].data || [];
@@ -805,6 +810,121 @@
           if (r2.error) return toast(erroMsg(r2.error), true);
           whatsapps.push(r2.data); whatsapps.sort(function (a, b) { return a.ordem - b.ordem; });
           renderWa(); refreshPreview(); toast("Restaurada");
+        });
+      } });
+    });
+  });
+
+  /* ═══════════ Vitrine ═══════════ */
+
+  var showcaseRows = $("showcaseRows");
+  var showcaseEditor = $("showcaseEditor");
+  var showcaseForm = $("showcaseForm");
+
+  function renderShowcase() {
+    $("showcaseEmpty").hidden = destaques.length > 0;
+    showcaseRows.innerHTML = destaques.map(function (d) {
+      return '<li class="row' + (d.ativo ? "" : " is-off") + '" data-id="' + d.id + '">' + HANDLE +
+        '<label class="switch"><input type="checkbox" data-toggle' + (d.ativo ? " checked" : "") + '><span></span></label>' +
+        '<img src="' + esc(d.imagem_url) + '" alt="" loading="lazy" data-edit>' +
+        '<div class="row__body" data-edit><span class="row__title">' + esc(d.titulo || "Sem nome") + "</span>" +
+        '<span class="row__sub">' + esc(d.legenda || (d.url ? "abre link" : "abre WhatsApp")) + "</span></div></li>";
+    }).join("");
+  }
+
+  showcaseRows.addEventListener("change", function (e) {
+    if (!e.target.matches("[data-toggle]")) return;
+    var li = e.target.closest("li"), ativo = e.target.checked;
+    li.classList.toggle("is-off", !ativo);
+    sb.from("destaques").update({ ativo: ativo }).eq("id", li.dataset.id).then(function (r) {
+      if (r.error) return toast(erroMsg(r.error), true);
+      var d = destaques.find(function (x) { return x.id === li.dataset.id; }); if (d) d.ativo = ativo;
+      toast(ativo ? "Foto visível" : "Foto escondida"); refreshPreview();
+    });
+  });
+  showcaseRows.addEventListener("click", function (e) {
+    var el = e.target.closest("[data-edit]"); if (!el) return;
+    var id = el.closest("li").dataset.id;
+    openShowcaseEditor(destaques.find(function (x) { return x.id === id; }));
+  });
+  sortable(showcaseRows, function () { saveOrder("destaques", destaques, showcaseRows); });
+
+  // envio de fotos: redimensiona no navegador (máx. 900px, WebP) para ficar leve
+  function comprimir(file) {
+    return new Promise(function (res, rej) {
+      var img = new Image(), url = URL.createObjectURL(file);
+      img.onload = function () {
+        var max = 900, w = img.width, h = img.height, k = Math.min(1, max / Math.max(w, h));
+        var c = document.createElement("canvas"); c.width = Math.round(w * k); c.height = Math.round(h * k);
+        c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
+        URL.revokeObjectURL(url);
+        c.toBlob(function (b) { b ? res(b) : rej(new Error("Não foi possível processar a imagem")); }, "image/webp", .82);
+      };
+      img.onerror = function () { rej(new Error("Arquivo de imagem inválido")); };
+      img.src = url;
+    });
+  }
+
+  $("showcaseFiles").addEventListener("change", function () {
+    var files = Array.prototype.slice.call(this.files); this.value = "";
+    if (!files.length) return;
+    toast("Enviando " + files.length + (files.length === 1 ? " foto…" : " fotos…"));
+    var fila = Promise.resolve();
+    files.forEach(function (f) {
+      fila = fila.then(function () {
+        return comprimir(f).then(function (blob) {
+          var path = "d-" + Date.now() + "-" + Math.random().toString(16).slice(2, 8) + ".webp";
+          return sb.storage.from("vitrine").upload(path, blob, { contentType: "image/webp" }).then(function (r) {
+            if (r.error) throw r.error;
+            var url = sb.storage.from("vitrine").getPublicUrl(path).data.publicUrl;
+            var titulo = f.name.replace(/\.[^.]+$/, "").replace(/[-_]+/g, " ").slice(0, 60);
+            return sb.from("destaques").insert({ titulo: titulo, imagem_url: url, ordem: destaques.length }).select().single();
+          }).then(function (r) { if (r.error) throw r.error; destaques.push(r.data); renderShowcase(); });
+        });
+      });
+    });
+    fila.then(function () { toast("Fotos enviadas · toque para dar nome e preço"); refreshPreview(); })
+      .catch(function (err) { toast(erroMsg(err), true); });
+  });
+
+  function openShowcaseEditor(d) {
+    editingShowcase = d;
+    showcaseForm.reset();
+    $("showcaseError").textContent = "";
+    $("showcasePreview").src = d.imagem_url;
+    showcaseForm.titulo.value = d.titulo || "";
+    showcaseForm.legenda.value = d.legenda || "";
+    showcaseForm.url.value = d.url || "";
+    showcaseForm.whatsapp_mensagem.value = d.whatsapp_mensagem || "";
+    showcaseEditor.hidden = false;
+    setTimeout(function () { showcaseForm.titulo.focus(); }, 50);
+  }
+  wireModal(showcaseEditor, function () { editingShowcase = null; });
+
+  showcaseForm.addEventListener("submit", function (e) {
+    e.preventDefault();
+    if (!editingShowcase) return;
+    var dados = { titulo: showcaseForm.titulo.value.trim(), legenda: showcaseForm.legenda.value.trim(), url: showcaseForm.url.value.trim(), whatsapp_mensagem: showcaseForm.whatsapp_mensagem.value.trim() };
+    var btn = showcaseForm.querySelector("button[type=submit]"); busy(btn, true);
+    sb.from("destaques").update(dados).eq("id", editingShowcase.id).select().single().then(function (r) {
+      if (r.error) throw r.error;
+      var i = destaques.findIndex(function (x) { return x.id === editingShowcase.id; }); destaques[i] = r.data;
+      renderShowcase(); showcaseEditor.hidden = true; editingShowcase = null; toast("Salvo"); refreshPreview();
+    }).catch(function (err) { $("showcaseError").textContent = erroMsg(err); }).finally(function () { busy(btn, false); });
+  });
+
+  $("deleteShowcase").addEventListener("click", function () {
+    if (!editingShowcase) return;
+    var alvo = editingShowcase;
+    sb.from("destaques").delete().eq("id", alvo.id).then(function (r) {
+      if (r.error) return toast(erroMsg(r.error), true);
+      destaques = destaques.filter(function (x) { return x.id !== alvo.id; });
+      renderShowcase(); showcaseEditor.hidden = true; editingShowcase = null; refreshPreview();
+      toast('"' + alvo.titulo + '" apagada', { acao: "Desfazer", ao: function () {
+        var copia = Object.assign({}, alvo); delete copia.criado_em;
+        sb.from("destaques").insert(copia).select().single().then(function (r2) {
+          if (r2.error) return toast(erroMsg(r2.error), true);
+          destaques.push(r2.data); destaques.sort(function (a, b) { return a.ordem - b.ordem; }); renderShowcase(); refreshPreview(); toast("Restaurada");
         });
       } });
     });
