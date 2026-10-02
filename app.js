@@ -27,6 +27,13 @@
     });
   }
   function digits(n) { return String(n || "").replace(/\D/g, ""); }
+  function brl(v) { return "R$ " + Number(v).toFixed(2).replace(".", ",").replace(/\B(?=(\d{3})+(?!\d))/g, "."); }
+  function lojasDaPeca(c) {
+    var ids = c.lojas || [];
+    var todas = lojasComNumero();
+    if (!ids.length) return todas;
+    return todas.filter(function (w) { return ids.indexOf(w.id) >= 0; });
+  }
   function waLink(wa, msg) {
     var text = msg || wa.mensagem;
     return "https://wa.me/" + digits(wa.numero) + (text ? "?text=" + encodeURIComponent(text) : "");
@@ -114,22 +121,20 @@
 
     /* Vitrine */
     var wrap = document.getElementById("showcaseWrap");
-    var comWa = lojasComNumero();
-    var cards = destaques.map(function (c) {
-      var href = c.url, extra = "";
-      if (!href) {
-        if (!comWa.length) return "";
-        if (comWa.length === 1) href = waLink(comWa[0], c.whatsapp_mensagem || ("Oi! Vi \"" + c.titulo + "\" na página e quero saber mais 💜"));
-        else { href = "#"; extra = ' data-filiais data-msg="' + esc(c.whatsapp_mensagem || ("Oi! Vi \"" + c.titulo + "\" na página e quero saber mais 💜")) + '"'; }
-      }
-      return '<a class="card" href="' + esc(href) + '"' + extra + (isExternal(href) ? ' target="_blank" rel="noopener"' : "") + ">" +
-        '<img src="' + esc(c.imagem_url) + '" alt="' + esc(c.titulo) + '" loading="lazy" decoding="async" width="300" height="375">' +
-        '<span class="card__go">' + ARROW.replace('class="tag__go"', "") + "</span>" +
+    document.getElementById("showcase").innerHTML = destaques.map(function (c) {
+      var capa = (c.imagens && c.imagens[0]) || "";
+      if (!capa) return "";
+      var out = c.status === "esgotado";
+      var tag = out ? "Esgotado" : c.status === "ultimas" ? "Últimas" : (c.selo || (c.preco_antigo && c.preco && c.preco_antigo > c.preco ? "Promo" : ""));
+      return '<a class="card' + (out ? " card--out" : "") + '" href="#" data-peca="' + esc(c.id) + '">' +
+        '<img src="' + esc(capa) + '" alt="' + esc(c.titulo) + '" loading="lazy" decoding="async" width="300" height="375">' +
+        (tag ? '<span class="card__tag">' + esc(tag) + "</span>" : "") +
+        '<span class="card__go"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 17 17 7M8 7h9v9"/></svg></span>' +
         '<span class="card__body"><span class="card__title">' + esc(c.titulo) + "</span>" +
-        (c.legenda ? '<span class="card__sub">' + esc(c.legenda) + "</span>" : "") + "</span></a>";
+        (c.preco != null ? '<span class="card__sub">' + (c.preco_antigo && c.preco_antigo > c.preco ? "<s>" + brl(c.preco_antigo) + "</s>" : "") + brl(c.preco) + "</span>" : "") +
+        "</span></a>";
     }).join("");
-    document.getElementById("showcase").innerHTML = cards;
-    wrap.hidden = !cards;
+    wrap.hidden = !document.getElementById("showcase").children.length;
 
     /* Links */
     var now = new Date();
@@ -250,7 +255,89 @@
       }).join("");
     }
 
+    /* ─── Ficha da peça ─── */
+    var pieceSheet = document.getElementById("pieceSheet");
+    var pieceBox = document.getElementById("piece");
+    var pecaAberta = null, escolha = { tamanho: "", cor: "" };
+
+    function msgEstoque(c, loja) {
+        var variacao = [escolha.tamanho ? "tamanho " + escolha.tamanho : "", escolha.cor ? "cor " + escolha.cor : ""].filter(Boolean).join(", ");
+        var modelo = conf.msg_estoque || "Oi! Vi {peca} na página de vocês por {preco}. Tem no estoque{variacao}? {foto}";
+        return modelo
+          .replace("{peca}", c.titulo + (c.referencia ? " (ref. " + c.referencia + ")" : ""))
+          .replace("{preco}", c.preco != null ? brl(c.preco) : "")
+          .replace("{variacao}", variacao ? " no " + variacao : "")
+          .replace("{loja}", loja ? loja.nome : "")
+          .replace("{foto}", c.imagens && c.imagens[0] ? c.imagens[0] : "")
+          .replace(/\s+\?/g, "?").replace(/\s{2,}/g, " ").trim();
+    }
+
+    function abrirPeca(c) {
+      pecaAberta = c; escolha = { tamanho: "", cor: "" };
+      var lojas = lojasDaPeca(c);
+      var out = c.status === "esgotado";
+      var h = '<div class="piece__photos">' + (c.imagens || []).map(function (u, i) { return '<img src="' + esc(u) + '" alt="' + esc(c.titulo) + (i ? " " + (i + 1) : "") + '"' + (i ? ' loading="lazy"' : "") + ">"; }).join("") + "</div>";
+      h += '<div class="piece__head"><div><h2 class="piece__title" id="pieceTitle">' + esc(c.titulo) + "</h2>" + (c.referencia ? '<span class="piece__ref">REF. ' + esc(c.referencia) + "</span>" : "") + "</div>";
+      if (c.preco != null) h += '<div class="piece__price">' + (c.preco_antigo && c.preco_antigo > c.preco ? "<s>" + brl(c.preco_antigo) + "</s>" : "") + "<b>" + brl(c.preco) + "</b></div>";
+      h += "</div>";
+      if (c.descricao) h += '<p class="piece__desc">' + esc(c.descricao) + "</p>";
+      if (c.tamanhos && c.tamanhos.length) h += '<span class="piece__label">Tamanho</span><div class="chips" data-grupo="tamanho">' + c.tamanhos.map(function (t) { return '<button type="button" data-v="' + esc(t) + '">' + esc(t) + "</button>"; }).join("") + "</div>";
+      if (c.cores && c.cores.length) h += '<span class="piece__label">Cor</span><div class="chips" data-grupo="cor">' + c.cores.map(function (t) { return '<button type="button" data-v="' + esc(t) + '">' + esc(t) + "</button>"; }).join("") + "</div>";
+      if (lojas.length) h += '<span class="piece__label">Disponível em</span><p class="piece__stores">' + lojas.map(function (w) { return "<b>" + esc(w.nome) + "</b>" + (w.endereco ? " · " + esc(w.endereco) : ""); }).join("<br>") + "</p>";
+      h += '<div class="piece__actions">';
+      if (out) h += '<span class="piece__cta piece__cta--out"><span class="tag__icon">' + ICONS.svg("heart") + '</span><span>Esgotado no momento<small>Fale com a loja para saber quando volta</small></span><span></span></span>';
+      if (lojas.length) h += (lojas.length === 1 ? '<a class="piece__cta" data-estoque href="' + esc(waLink(lojas[0], msgEstoque(c, lojas[0]))) + '" target="_blank" rel="noopener">' : '<button type="button" class="piece__cta" data-estoque>') +
+        '<span class="tag__icon">' + ICONS.svg("whatsapp") + "</span><span>" + (out ? "Avisar quando chegar" : "Tem no estoque?") + "<small>" + (lojas.length === 1 ? "Chamar " + esc(lojas[0].nome) + " no WhatsApp" : "Escolha a loja e chame no WhatsApp") + '</small></span><span class="tag__go"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 17 17 7M8 7h9v9"/></svg></span>' + (lojas.length === 1 ? "</a>" : "</button>");
+      h += '<div class="piece__row">' + (c.url ? '<a class="piece__sec" href="' + esc(c.url) + '" target="_blank" rel="noopener" data-catalogo>' + ICONS.svg("bag") + "Ver no catálogo</a>" : "") +
+        '<button type="button" class="piece__sec" data-compartilhar>' + ICONS.svg("link") + "Compartilhar</button></div></div>";
+      h += '<p class="piece__note">A foto vai junto na mensagem como link.</p>';
+      pieceBox.innerHTML = h;
+      abrir(pieceSheet);
+      API.rpc("registrar_clique_peca", { peca_id: c.id, acao: "abriu", visitante: visitanteId() }).catch(function () {});
+    }
+
+    pieceBox.addEventListener("click", function (e) {
+      var chip = e.target.closest(".chips button");
+      if (chip) {
+        var grupo = chip.parentNode.dataset.grupo, ligado = chip.classList.contains("is-on");
+        chip.parentNode.querySelectorAll("button").forEach(function (b) { b.classList.remove("is-on"); });
+        if (!ligado) chip.classList.add("is-on");
+        escolha[grupo] = ligado ? "" : chip.dataset.v;
+        // atualiza o link do WhatsApp com a escolha
+        var cta = pieceBox.querySelector("a[data-estoque]"), l1 = lojasDaPeca(pecaAberta);
+        if (cta && l1.length === 1) cta.href = waLink(l1[0], msgEstoque(pecaAberta, l1[0]));
+        return;
+      }
+      if (e.target.closest("[data-estoque]")) {
+        var c = pecaAberta, lojas = lojasDaPeca(c);
+        API.rpc("registrar_clique_peca", { peca_id: c.id, acao: "whatsapp", visitante: visitanteId() }).catch(function () {});
+        if (lojas.length === 1) return; // é um link real; o navegador abre
+        // várias lojas: lista com a mensagem de cada uma
+        document.getElementById("waTitle").textContent = "Qual loja?";
+        document.getElementById("waSub").textContent = "A mensagem já vai pronta com a peça";
+        document.getElementById("branches").innerHTML = lojas.map(function (w) {
+          return '<a class="branch" href="' + esc(waLink(w, msgEstoque(c, w))) + '" target="_blank" rel="noopener"><span class="branch__icon">' + ICONS.svg("whatsapp") + '</span><span class="branch__text"><span class="branch__name">' + esc(w.nome) + "</span>" + (w.endereco ? '<span class="branch__addr">' + esc(w.endereco) + "</span>" : "") + '</span><span class="tag__go"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 17 17 7M8 7h9v9"/></svg></span></a>';
+        }).join("");
+        fechar(pieceSheet); abrir(waSheet);
+        return;
+      }
+      if (e.target.closest("[data-catalogo]")) API.rpc("registrar_clique_peca", { peca_id: pecaAberta.id, acao: "catalogo", visitante: visitanteId() }).catch(function () {});
+      if (e.target.closest("[data-compartilhar]")) {
+        var c2 = pecaAberta, texto = c2.titulo + (c2.preco != null ? " · " + brl(c2.preco) : "") + " — " + (conf.nome || "") + " " + pageUrl + "#peca=" + c2.id;
+        API.rpc("registrar_clique_peca", { peca_id: c2.id, acao: "compartilhou", visitante: visitanteId() }).catch(function () {});
+        if (navigator.share) navigator.share({ title: c2.titulo, text: texto, url: pageUrl + "#peca=" + c2.id }).catch(function () {});
+        else if (navigator.clipboard) navigator.clipboard.writeText(texto).then(function () { toast("Link da peça copiado"); });
+      }
+    });
+
+    // link direto para uma peça (#peca=id)
+    var m = /[#&]peca=([0-9a-f-]{36})/.exec(location.hash);
+    if (m) { var alvo = destaques.filter(function (d) { return d.id === m[1]; })[0]; if (alvo) setTimeout(function () { abrirPeca(alvo); }, 300); }
+
     document.addEventListener("click", function (e) {
+      if (e.target.closest("#pieceSheet [data-close]")) return fechar(pieceSheet);
+      var cardEl = e.target.closest("a.card[data-peca]");
+      if (cardEl) { e.preventDefault(); var pc = destaques.filter(function (d) { return d.id === cardEl.dataset.peca; })[0]; if (pc) abrirPeca(pc); return; }
       if (e.target.closest("#waSheet [data-close]")) return fechar(waSheet);
       if (e.target.closest("#sheet [data-close]")) return fechar(shareSheet);
       var a = e.target.closest("[data-filiais], [data-mapas]");
@@ -260,6 +347,7 @@
     });
     document.addEventListener("keydown", function (e) {
       if (e.key !== "Escape") return;
+      if (!pieceSheet.hidden) fechar(pieceSheet);
       if (!waSheet.hidden) fechar(waSheet);
       if (!shareSheet.hidden) fechar(shareSheet);
     });

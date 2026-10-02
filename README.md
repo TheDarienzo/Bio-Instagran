@@ -13,7 +13,7 @@ Os dados ficam no Supabase (projeto "Bio Instagran"). A página pública lê de 
 | Aba | O que controla |
 |---|---|
 | **Visão geral** | Painel de medição: visitantes únicos, visitas, cliques e cliques por visita (com comparação ao período anterior), gráfico de visitas por dia, aparelhos, origem do acesso (Instagram, WhatsApp…), cidades/estados, sistema e navegador, links mais clicados. Períodos de 7, 30 e 90 dias. |
-| **Vitrine** | Fotos de peças/looks em rolagem lateral no topo da página. Suba várias de uma vez (o painel redimensiona e converte para WebP); dê nome, preço e destino (link do catálogo ou WhatsApp com mensagem pronta). |
+| **Vitrine** | Peças com até 4 fotos (capa arrastável), nome, referência, preço e preço antigo (promoção), descrição, tamanhos, cores, **lojas onde tem**, situação (disponível / últimas / esgotado), selo, link no catálogo e data para sair sozinha. Filtros, apagar na linha com desfazer, duplicar, contatos por peça. Na página, tocar na peça abre a ficha: fotos, escolha de tamanho/cor, "Disponível em", botão **"Tem no estoque?"** que abre o WhatsApp da loja certa com mensagem pronta (nome, ref., preço, tamanho/cor e link da foto), "Ver no catálogo" e compartilhar (link direto `#peca=…`). A mensagem padrão é editável em Perfil. |
 | **Links** | Criar, editar, apagar e reordenar (arrastando) os botões. Ligar/desligar sem apagar. Cada link vai para um endereço, para o WhatsApp (uma loja ou o cliente escolhe) ou para "Como chegar" (mapa das lojas). Botão em destaque, selo ("Novo"), ícone, subtítulo, agendamento (o link aparece só num período). Contagem de cliques. |
 | **Lojas** | Uma linha por loja: nome, WhatsApp, endereço, link do Google Maps (opcional) e mensagem que já chega escrita. Com mais de uma loja, o ícone de WhatsApp e os links "Como chegar" abrem uma lista para o cliente escolher a loja. |
 | **Perfil** | Nome, frase da bio, logo (envia uma imagem), endereço da página publicada (usado no QR code). |
@@ -79,7 +79,8 @@ assets/vendor/                     supabase-js (MIT) e qrcode-generator (MIT)
 | `whatsapps` | números por loja: nome, número, endereço, mensagem |
 | `redes` | ícones de redes sociais |
 | `links` | botões e títulos de seção, com ordem, destino (URL ou WhatsApp), agendamento e cliques |
-| `destaques` | fotos da vitrine: título, legenda, imagem, destino |
+| `destaques` | peças da vitrine: fotos, preço, variações, lojas, situação, validade, contatos |
+| `cliques_pecas` | abriu / WhatsApp / catálogo / compartilhou, por peça |
 | `admins` | quem pode editar |
 | `visitas` | uma linha por visita (1 por visitante por dia): aparelho, sistema, navegador, cidade/estado aproximados, origem. Sem IP e sem nome. |
 | `cliques` | um registro por clique em link, com data |

@@ -261,6 +261,8 @@
     itens.push({ tipo: "acao", rotulo: "Abrir a página", sub: "nova aba", ao: function () { window.open(conf.url || "index.html", "_blank"); } });
     links.forEach(function (l) { itens.push({ tipo: "link", rotulo: l.titulo, sub: l.tipo === "secao" ? "seção" : (l.ativo ? "editar link" : "editar link · escondido"), ao: function () { goTab("links"); openEditor(l); } }); });
     whatsapps.forEach(function (w) { itens.push({ tipo: "link", rotulo: w.nome || fmtNumero(w.numero), sub: "editar loja", ao: function () { goTab("whatsapp"); openWaEditor(w); } }); });
+    destaques.forEach(function (d) { itens.push({ tipo: "link", rotulo: d.titulo || "Peça sem nome", sub: "editar peça", ao: function () { goTab("vitrine"); openShowcaseEditor(d); } }); });
+    itens.push({ tipo: "acao", rotulo: "Nova peça na vitrine", sub: "ação", ao: function () { goTab("vitrine"); openShowcaseEditor(null); } });
 
     paletteItems = q ? itens.filter(function (i) { return (i.rotulo + " " + i.sub).toLowerCase().indexOf(q) >= 0; }) : itens.slice(0, 12);
     paletteIdx = 0;
@@ -296,7 +298,7 @@
     if (mod && e.key.toLowerCase() === "s" && !shell.hidden) {
       e.preventDefault();
       // salva o que estiver aberto: editor de link/loja/acesso, senão o formulário da aba
-      var alvo = !editor.hidden ? linkForm : !waEditor.hidden ? waForm : !accessEditor.hidden ? accessForm
+      var alvo = !editor.hidden ? linkForm : !showcaseEditor.hidden ? showcaseForm : !waEditor.hidden ? waForm : !accessEditor.hidden ? accessForm
         : document.querySelector(".panel.is-active form.form--wide");
       if (alvo && alvo.requestSubmit) alvo.requestSubmit();
       else if (alvo) alvo.dispatchEvent(new Event("submit", { cancelable: true }));
@@ -373,7 +375,6 @@
       sb.from("destaques").select("*").order("ordem"),
     ]).then(function (res) {
       destaques = res[5].data || [];
-      renderShowcase();
       conf = res[0].data || { id: 1, horario: {} };
       redes = res[1].data || [];
       links = res[2].data || [];
@@ -386,6 +387,7 @@
       });
       renderLinks();
       renderWa();
+      renderShowcase();
       fillPerfil();
       renderRedes();
       renderHorario();
@@ -815,22 +817,53 @@
     });
   });
 
-  /* ═══════════ Vitrine ═══════════ */
+  /* ═══════════ Vitrine (peças) ═══════════ */
 
   var showcaseRows = $("showcaseRows");
   var showcaseEditor = $("showcaseEditor");
   var showcaseForm = $("showcaseForm");
+  var fotos = [];          // URLs da peça em edição (a primeira é a capa)
+  var filtroVitrine = "todas";
+
+  function brl(v) { return "R$ " + Number(v).toFixed(2).replace(".", ",").replace(/\B(?=(\d{3})+(?!\d))/g, "."); }
+  function numero(v) { v = String(v || "").replace(/[^\d,.]/g, "").replace(/\.(?=\d{3})/g, "").replace(",", "."); return v === "" ? null : Number(v); }
+  function lista(v) { return String(v || "").split(/[,;]/).map(function (x) { return x.trim(); }).filter(Boolean).slice(0, 12); }
+  function nomesLojas(ids) {
+    if (!ids || !ids.length) return "Todas as lojas";
+    return ids.map(function (id) { var w = waById(id); return w ? w.nome : null; }).filter(Boolean).join(" · ") || "Todas as lojas";
+  }
 
   function renderShowcase() {
+    var agora = new Date();
+    var vis = destaques.filter(function (d) {
+      if (filtroVitrine === "off") return !d.ativo;
+      if (filtroVitrine === "esgotado") return d.status === "esgotado";
+      if (filtroVitrine === "disponivel") return d.ativo && d.status !== "esgotado";
+      return true;
+    });
     $("showcaseEmpty").hidden = destaques.length > 0;
-    showcaseRows.innerHTML = destaques.map(function (d) {
-      return '<li class="row' + (d.ativo ? "" : " is-off") + '" data-id="' + d.id + '">' + HANDLE +
+    showcaseRows.innerHTML = vis.map(function (d) {
+      var capa = (d.imagens && d.imagens[0]) || "";
+      var out = d.status === "esgotado", expirada = d.ate && new Date(d.ate) < agora;
+      var tag = out ? "Esgotado" : d.status === "ultimas" ? "Últimas" : expirada ? "Expirada" : (d.selo || "");
+      return '<li class="row' + (d.ativo ? "" : " is-off") + (capa ? "" : " is-missing") + '" data-id="' + d.id + '">' + HANDLE +
+        (tag ? '<span class="piece-tag' + (out || expirada ? " is-out" : "") + '">' + esc(tag) + "</span>" : "") +
         '<label class="switch"><input type="checkbox" data-toggle' + (d.ativo ? " checked" : "") + '><span></span></label>' +
-        '<img src="' + esc(d.imagem_url) + '" alt="" loading="lazy" data-edit>' +
+        (capa ? '<img src="' + esc(capa) + '" alt="" loading="lazy" data-edit>' : '<div class="row__body" data-edit style="aspect-ratio:4/5;display:grid;place-items:center;color:var(--muted);font-size:.8rem">sem foto</div>') +
         '<div class="row__body" data-edit><span class="row__title">' + esc(d.titulo || "Sem nome") + "</span>" +
-        '<span class="row__sub">' + esc(d.legenda || (d.url ? "abre link" : "abre WhatsApp")) + "</span></div></li>";
+        '<span class="row__sub">' + (d.preco != null ? brl(d.preco) : "sem preço") + (d.referencia ? " · ref. " + esc(d.referencia) : "") + "</span>" +
+        '<span class="row__stores">' + esc(nomesLojas(d.lojas)) + "</span></div>" +
+        '<div class="row__foot"><span>' + (d.cliques || 0) + (d.cliques === 1 ? " contato" : " contatos") + '</span><button type="button" data-del>Apagar</button></div></li>';
     }).join("");
+    if (!vis.length && destaques.length) showcaseRows.innerHTML = '<li class="empty" style="grid-column:1/-1">Nenhuma peça neste filtro.</li>';
   }
+
+  $("vitrineFilters").addEventListener("click", function (e) {
+    var b = e.target.closest("[data-f]"); if (!b) return;
+    filtroVitrine = b.dataset.f;
+    $("vitrineFilters").querySelectorAll(".chip").forEach(function (c) { c.classList.toggle("is-on", c === b); });
+    renderShowcase();
+  });
 
   showcaseRows.addEventListener("change", function (e) {
     if (!e.target.matches("[data-toggle]")) return;
@@ -839,23 +872,39 @@
     sb.from("destaques").update({ ativo: ativo }).eq("id", li.dataset.id).then(function (r) {
       if (r.error) return toast(erroMsg(r.error), true);
       var d = destaques.find(function (x) { return x.id === li.dataset.id; }); if (d) d.ativo = ativo;
-      toast(ativo ? "Foto visível" : "Foto escondida"); refreshPreview();
+      toast(ativo ? "Peça visível" : "Peça escondida"); refreshPreview();
     });
   });
   showcaseRows.addEventListener("click", function (e) {
-    var el = e.target.closest("[data-edit]"); if (!el) return;
-    var id = el.closest("li").dataset.id;
-    openShowcaseEditor(destaques.find(function (x) { return x.id === id; }));
+    var li = e.target.closest("li[data-id]"); if (!li) return;
+    var d = destaques.find(function (x) { return x.id === li.dataset.id; });
+    if (e.target.closest("[data-del]")) return apagarPeca(d);
+    if (e.target.closest("[data-edit]")) openShowcaseEditor(d);
   });
-  sortable(showcaseRows, function () { saveOrder("destaques", destaques, showcaseRows); });
+  sortable(showcaseRows, function () { if (filtroVitrine === "todas") saveOrder("destaques", destaques, showcaseRows); else toast("Para reordenar, use o filtro \"Todas\""); });
 
-  // envio de fotos: redimensiona no navegador (máx. 900px, WebP) para ficar leve
+  function apagarPeca(alvo) {
+    sb.from("destaques").delete().eq("id", alvo.id).then(function (r) {
+      if (r.error) return toast(erroMsg(r.error), true);
+      destaques = destaques.filter(function (x) { return x.id !== alvo.id; });
+      renderShowcase(); showcaseEditor.hidden = true; editingShowcase = null; refreshPreview();
+      toast('"' + (alvo.titulo || "Peça") + '" apagada', { acao: "Desfazer", ao: function () {
+        var copia = Object.assign({}, alvo); delete copia.criado_em;
+        sb.from("destaques").insert(copia).select().single().then(function (r2) {
+          if (r2.error) return toast(erroMsg(r2.error), true);
+          destaques.push(r2.data); destaques.sort(function (a, b) { return a.ordem - b.ordem; }); renderShowcase(); refreshPreview(); toast("Restaurada");
+        });
+      } });
+    });
+  }
+
+  // ─── fotos: reduz no navegador (máx. 1000px, WebP) ───
   function comprimir(file) {
     return new Promise(function (res, rej) {
       var img = new Image(), url = URL.createObjectURL(file);
       img.onload = function () {
-        var max = 900, w = img.width, h = img.height, k = Math.min(1, max / Math.max(w, h));
-        var c = document.createElement("canvas"); c.width = Math.round(w * k); c.height = Math.round(h * k);
+        var max = 1000, k = Math.min(1, max / Math.max(img.width, img.height));
+        var c = document.createElement("canvas"); c.width = Math.round(img.width * k); c.height = Math.round(img.height * k);
         c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
         URL.revokeObjectURL(url);
         c.toBlob(function (b) { b ? res(b) : rej(new Error("Não foi possível processar a imagem")); }, "image/webp", .82);
@@ -865,68 +914,112 @@
     });
   }
 
-  $("showcaseFiles").addEventListener("change", function () {
-    var files = Array.prototype.slice.call(this.files); this.value = "";
+  function renderFotos() {
+    $("photosGrid").innerHTML = fotos.map(function (u, i) {
+      return '<div class="photo' + (i === 0 ? " is-cover" : "") + (u === "…" ? " is-uploading" : "") + '" draggable="true" data-i="' + i + '">' +
+        (u === "…" ? "" : '<img src="' + esc(u) + '" alt="">') +
+        '<button type="button" class="photo__x" data-rm="' + i + '" aria-label="Remover"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>';
+    }).join("");
+    $("photosAdd").hidden = fotos.length >= 4;
+  }
+  $("photosGrid").addEventListener("click", function (e) {
+    var b = e.target.closest("[data-rm]"); if (!b) return;
+    fotos.splice(+b.dataset.rm, 1); renderFotos();
+  });
+  // arrastar para reordenar (a primeira vira capa)
+  var dragI = null;
+  $("photosGrid").addEventListener("dragstart", function (e) { var ph = e.target.closest(".photo"); if (ph) dragI = +ph.dataset.i; });
+  $("photosGrid").addEventListener("dragover", function (e) { e.preventDefault(); });
+  $("photosGrid").addEventListener("drop", function (e) {
+    var ph = e.target.closest(".photo"); if (!ph || dragI == null) return;
+    var j = +ph.dataset.i, item = fotos.splice(dragI, 1)[0]; fotos.splice(j, 0, item); dragI = null; renderFotos();
+  });
+  $("pieceFiles").addEventListener("change", function () {
+    var files = Array.prototype.slice.call(this.files).slice(0, 4 - fotos.length); this.value = "";
     if (!files.length) return;
-    toast("Enviando " + files.length + (files.length === 1 ? " foto…" : " fotos…"));
     var fila = Promise.resolve();
     files.forEach(function (f) {
+      var pos = fotos.push("…") - 1; renderFotos();
       fila = fila.then(function () {
         return comprimir(f).then(function (blob) {
-          var path = "d-" + Date.now() + "-" + Math.random().toString(16).slice(2, 8) + ".webp";
+          var path = "p-" + Date.now() + "-" + Math.random().toString(16).slice(2, 8) + ".webp";
           return sb.storage.from("vitrine").upload(path, blob, { contentType: "image/webp" }).then(function (r) {
             if (r.error) throw r.error;
-            var url = sb.storage.from("vitrine").getPublicUrl(path).data.publicUrl;
-            var titulo = f.name.replace(/\.[^.]+$/, "").replace(/[-_]+/g, " ").slice(0, 60);
-            return sb.from("destaques").insert({ titulo: titulo, imagem_url: url, ordem: destaques.length }).select().single();
-          }).then(function (r) { if (r.error) throw r.error; destaques.push(r.data); renderShowcase(); });
-        });
+            fotos[pos] = sb.storage.from("vitrine").getPublicUrl(path).data.publicUrl; renderFotos();
+          });
+        }).catch(function (err) { fotos.splice(fotos.indexOf("…"), 1); renderFotos(); toast(erroMsg(err), true); });
       });
     });
-    fila.then(function () { toast("Fotos enviadas · toque para dar nome e preço"); refreshPreview(); })
-      .catch(function (err) { toast(erroMsg(err), true); });
   });
 
+  function renderLojasPeca(sel) {
+    $("pieceStores").innerHTML = whatsapps.filter(function (w) { return digits(w.numero); }).map(function (w) {
+      return '<label><input type="checkbox" name="lojas" value="' + w.id + '"' + (sel && sel.indexOf(w.id) >= 0 ? " checked" : "") + ">" + esc(w.nome || fmtNumero(w.numero)) + "</label>";
+    }).join("") || '<p class="form__hint">Cadastre uma loja com WhatsApp na aba Lojas.</p>';
+  }
+
   function openShowcaseEditor(d) {
-    editingShowcase = d;
+    editingShowcase = d || null;
     showcaseForm.reset();
     $("showcaseError").textContent = "";
-    $("showcasePreview").src = d.imagem_url;
-    showcaseForm.titulo.value = d.titulo || "";
-    showcaseForm.legenda.value = d.legenda || "";
-    showcaseForm.url.value = d.url || "";
-    showcaseForm.whatsapp_mensagem.value = d.whatsapp_mensagem || "";
+    $("showcaseTitle").textContent = d ? "Editar peça" : "Nova peça";
+    $("deleteShowcase").hidden = !d; $("dupShowcase").hidden = !d;
+    $("pieceStat").textContent = d ? (d.cliques || 0) + " contatos pelo WhatsApp" : "";
+    fotos = d ? (d.imagens || []).slice() : []; renderFotos();
+    showcaseForm.titulo.value = d ? d.titulo : "";
+    showcaseForm.referencia.value = d ? d.referencia || "" : "";
+    showcaseForm.preco.value = d && d.preco != null ? String(d.preco).replace(".", ",") : "";
+    showcaseForm.preco_antigo.value = d && d.preco_antigo != null ? String(d.preco_antigo).replace(".", ",") : "";
+    showcaseForm.descricao.value = d ? d.descricao || "" : "";
+    showcaseForm.tamanhos.value = d ? (d.tamanhos || []).join(", ") : "";
+    showcaseForm.cores.value = d ? (d.cores || []).join(", ") : "";
+    renderLojasPeca(d ? d.lojas : []);
+    showcaseForm.status.value = d ? d.status || "disponivel" : "disponivel";
+    showcaseForm.selo.value = d ? d.selo || "" : "";
+    showcaseForm.url.value = d ? d.url || "" : "";
+    showcaseForm.ate.value = d && d.ate ? toLocalInput(d.ate) : "";
     showcaseEditor.hidden = false;
     setTimeout(function () { showcaseForm.titulo.focus(); }, 50);
   }
   wireModal(showcaseEditor, function () { editingShowcase = null; });
+  $("addPiece").addEventListener("click", function () { openShowcaseEditor(null); });
 
   showcaseForm.addEventListener("submit", function (e) {
     e.preventDefault();
-    if (!editingShowcase) return;
-    var dados = { titulo: showcaseForm.titulo.value.trim(), legenda: showcaseForm.legenda.value.trim(), url: showcaseForm.url.value.trim(), whatsapp_mensagem: showcaseForm.whatsapp_mensagem.value.trim() };
+    var imgs = fotos.filter(function (u) { return u !== "…"; });
+    if (fotos.indexOf("…") >= 0) { $("showcaseError").textContent = "Espere as fotos terminarem de subir."; return; }
+    if (!imgs.length) { $("showcaseError").textContent = "Adicione pelo menos uma foto."; return; }
+    var preco = numero(showcaseForm.preco.value), antigo = numero(showcaseForm.preco_antigo.value);
+    if (antigo != null && preco != null && antigo <= preco) { $("showcaseError").textContent = "O preço antigo precisa ser maior que o atual."; return; }
+    var dados = {
+      titulo: showcaseForm.titulo.value.trim(), referencia: showcaseForm.referencia.value.trim(),
+      preco: preco, preco_antigo: antigo, descricao: showcaseForm.descricao.value.trim(),
+      imagens: imgs, imagem_url: imgs[0],
+      tamanhos: lista(showcaseForm.tamanhos.value), cores: lista(showcaseForm.cores.value),
+      lojas: Array.prototype.map.call(showcaseForm.querySelectorAll("[name=lojas]:checked"), function (c) { return c.value; }),
+      status: showcaseForm.status.value, selo: showcaseForm.selo.value.trim(), url: showcaseForm.url.value.trim(),
+      ate: fromLocalInput(showcaseForm.ate.value),
+    };
     var btn = showcaseForm.querySelector("button[type=submit]"); busy(btn, true);
-    sb.from("destaques").update(dados).eq("id", editingShowcase.id).select().single().then(function (r) {
+    var q = editingShowcase
+      ? sb.from("destaques").update(dados).eq("id", editingShowcase.id).select().single()
+      : sb.from("destaques").insert(Object.assign(dados, { ordem: destaques.length, ativo: true })).select().single();
+    q.then(function (r) {
       if (r.error) throw r.error;
-      var i = destaques.findIndex(function (x) { return x.id === editingShowcase.id; }); destaques[i] = r.data;
-      renderShowcase(); showcaseEditor.hidden = true; editingShowcase = null; toast("Salvo"); refreshPreview();
+      if (editingShowcase) { var i = destaques.findIndex(function (x) { return x.id === editingShowcase.id; }); destaques[i] = r.data; }
+      else destaques.push(r.data);
+      renderShowcase(); showcaseEditor.hidden = true; editingShowcase = null; toast("Peça salva"); refreshPreview();
     }).catch(function (err) { $("showcaseError").textContent = erroMsg(err); }).finally(function () { busy(btn, false); });
   });
 
-  $("deleteShowcase").addEventListener("click", function () {
+  $("deleteShowcase").addEventListener("click", function () { if (editingShowcase) apagarPeca(editingShowcase); });
+  $("dupShowcase").addEventListener("click", function () {
     if (!editingShowcase) return;
-    var alvo = editingShowcase;
-    sb.from("destaques").delete().eq("id", alvo.id).then(function (r) {
+    var copia = Object.assign({}, editingShowcase, { titulo: editingShowcase.titulo + " (cópia)", ordem: destaques.length, cliques: 0 });
+    delete copia.id; delete copia.criado_em;
+    sb.from("destaques").insert(copia).select().single().then(function (r) {
       if (r.error) return toast(erroMsg(r.error), true);
-      destaques = destaques.filter(function (x) { return x.id !== alvo.id; });
-      renderShowcase(); showcaseEditor.hidden = true; editingShowcase = null; refreshPreview();
-      toast('"' + alvo.titulo + '" apagada', { acao: "Desfazer", ao: function () {
-        var copia = Object.assign({}, alvo); delete copia.criado_em;
-        sb.from("destaques").insert(copia).select().single().then(function (r2) {
-          if (r2.error) return toast(erroMsg(r2.error), true);
-          destaques.push(r2.data); destaques.sort(function (a, b) { return a.ordem - b.ordem; }); renderShowcase(); refreshPreview(); toast("Restaurada");
-        });
-      } });
+      destaques.push(r.data); renderShowcase(); showcaseEditor.hidden = true; editingShowcase = null; refreshPreview(); toast("Cópia criada");
     });
   });
 
@@ -940,6 +1033,7 @@
     perfilForm.nome.value = conf.nome || "";
     perfilForm.bio.value = conf.bio || "";
     perfilForm.url.value = conf.url || "";
+    perfilForm.msg_estoque.value = conf.msg_estoque || "";
     $("logoPreview").src = conf.logo_url || "assets/logo.png";
     $("logoReset").hidden = !conf.logo_url;
     updateCounter();
@@ -978,6 +1072,7 @@
       nome: perfilForm.nome.value.trim(),
       bio: perfilForm.bio.value.trim(),
       url: perfilForm.url.value.trim(),
+      msg_estoque: perfilForm.msg_estoque.value.trim() || "Oi! Vi {peca} na página de vocês por {preco}. Tem no estoque{variacao}? {foto}",
       atualizado_em: new Date().toISOString(),
     };
 
@@ -1216,6 +1311,8 @@
       var nomes = {}; links.forEach(function (l) { nomes[l.id] = l.titulo; });
       renderBars("linkBars", porLink, nomes, 8);
 
+      var porPeca = destaques.filter(function (d) { return d.cliques > 0; }).map(function (d) { return { k: d.titulo, n: d.cliques }; }).sort(function (a, b) { return b.n - a.n; });
+      renderBars("pecaBars", porPeca, {}, 6);
       renderInsights(vA, vP, cA, cP, nomes, dias, per.ateHoje);
       dashDados = { visitas: vA, cliques: cA, nomes: nomes, dias: dias, inicio: inicio, fim: fim };
     }).catch(function (err) { toast(erroMsg(err), true); });

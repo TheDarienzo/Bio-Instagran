@@ -10,8 +10,8 @@
   <!-- Política de segurança: só scripts deste site; conexões só com o Supabase -->
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://*.supabase.co https://www.google.com; font-src 'self'; connect-src 'self' https://*.supabase.co wss://*.supabase.co; frame-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; upgrade-insecure-requests" />
   <meta name="referrer" content="strict-origin-when-cross-origin" />
-  <link rel="stylesheet" href="admin.css?v=202610022009" />
-  <script src="theme.js?v=202610022009"></script>
+  <link rel="stylesheet" href="admin.css?v=202610022020" />
+  <script src="theme.js?v=202610022020"></script>
 </head>
 <body>
 
@@ -133,6 +133,7 @@
           <div class="card"><div class="card__head"><h2>Como chegaram</h2></div><div class="bars" id="srcBars"></div></div>
           <div class="card"><div class="card__head"><h2>De onde acessam</h2><span class="card__sub">cidade · estado</span></div><div class="bars" id="geoBars"></div></div>
           <div class="card"><div class="card__head"><h2>Links mais clicados</h2></div><div class="bars" id="linkBars"></div></div>
+          <div class="card"><div class="card__head"><h2>Peças mais procuradas</h2><span class="card__sub">contatos no WhatsApp</span></div><div class="bars" id="pecaBars"></div></div>
           <div class="card"><div class="card__head"><h2>Sistema e navegador</h2></div><div class="bars" id="uaBars"></div></div>
           <div class="card card--share">
             <div class="card__head"><h2>Divulgar</h2></div>
@@ -170,14 +171,20 @@
         <header class="panel__head">
           <div>
             <h1>Vitrine</h1>
-            <p>Fotos de peças ou looks que aparecem no topo da página, em rolagem lateral. Toque na foto para editar; arraste para ordenar.</p>
+            <p>Peças que aparecem no topo da página. A cliente toca, vê a ficha e chama a loja certa no WhatsApp com a mensagem pronta.</p>
           </div>
           <div class="panel__actions">
-            <label class="btn btn--primary btn--file">+ Foto <input type="file" id="showcaseFiles" accept="image/png,image/jpeg,image/webp" multiple hidden /></label>
+            <button class="btn btn--primary" id="addPiece">+ Peça</button>
           </div>
         </header>
+        <div class="vitrine-filters" id="vitrineFilters">
+          <button type="button" class="chip is-on" data-f="todas">Todas</button>
+          <button type="button" class="chip" data-f="disponivel">Disponíveis</button>
+          <button type="button" class="chip" data-f="esgotado">Esgotadas</button>
+          <button type="button" class="chip" data-f="off">Escondidas</button>
+        </div>
         <ul class="rows rows--vitrine" id="showcaseRows"></ul>
-        <p class="empty" id="showcaseEmpty" hidden>Nenhuma foto ainda. Suba a primeira pelo botão "+ Foto". Fotos em pé (4:5) ficam melhores.</p>
+        <p class="empty" id="showcaseEmpty" hidden>Nenhuma peça ainda. Comece pelo botão "+ Peça".</p>
       </section>
 
       <!-- ── WhatsApp ── -->
@@ -218,6 +225,11 @@
           <label>Nome da loja <input name="nome" required maxlength="60" /></label>
           <label>Frase da bio <textarea name="bio" rows="2" maxlength="160"></textarea>
             <small class="counter" data-for="bio"></small></label>
+
+          <h2 class="form__group">Mensagem "Tem no estoque?"</h2>
+          <label>O que a cliente envia ao tocar numa peça da vitrine
+            <textarea name="msg_estoque" rows="3" maxlength="300"></textarea>
+            <small>Use {peca}, {preco}, {variacao} (tamanho/cor escolhidos), {loja} e {foto} (link da foto). Deixe vazio para o padrão.</small></label>
 
           <h2 class="form__group">Endereço da página</h2>
           <label>Link publicado <input name="url" type="url" placeholder="https://…" />
@@ -441,23 +453,61 @@
     </form>
   </div>
 
-  <!-- ══════════ Editor de foto da vitrine ══════════ -->
+  <!-- ══════════ Editor de peça ══════════ -->
   <div class="modal" id="showcaseEditor" hidden>
     <div class="modal__backdrop" data-close></div>
-    <form class="modal__panel form" id="showcaseForm" role="dialog" aria-modal="true" aria-labelledby="showcaseTitle">
+    <form class="modal__panel modal__panel--wide form" id="showcaseForm" role="dialog" aria-modal="true" aria-labelledby="showcaseTitle">
       <button class="modal__x" type="button" data-close aria-label="Fechar"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
-      <h2 id="showcaseTitle">Foto da vitrine</h2>
-      <div class="showcase-prev"><img id="showcasePreview" alt="" /></div>
-      <label>Nome da peça <input name="titulo" required maxlength="60" placeholder="ex.: Vestido midi floral" /></label>
-      <label>Legenda <span class="opt">opcional — preço ou chamada</span> <input name="legenda" maxlength="30" placeholder="ex.: R$ 89,90" /></label>
-      <label>Ao tocar, abre <input name="url" placeholder="Deixe vazio para abrir o WhatsApp" />
-        <small>Cole o link do produto no catálogo, ou deixe vazio para o cliente falar no WhatsApp.</small></label>
-      <label>Mensagem do WhatsApp <span class="opt">só se abrir o WhatsApp</span> <textarea name="whatsapp_mensagem" rows="2" placeholder="Oi! Vi o vestido midi na página e quero saber mais 💜"></textarea></label>
+      <h2 id="showcaseTitle">Nova peça</h2>
+
+      <fieldset class="photos">
+        <legend>Fotos <span class="opt">até 4 · a primeira é a capa · arraste para reordenar</span></legend>
+        <div class="photos__grid" id="photosGrid"></div>
+        <label class="btn btn--file photos__add" id="photosAdd">+ Adicionar fotos <input type="file" id="pieceFiles" accept="image/png,image/jpeg,image/webp" multiple hidden /></label>
+        <p class="form__hint">As fotos são reduzidas e convertidas no seu navegador antes de subir (ficam leves).</p>
+      </fieldset>
+
+      <div class="two">
+        <label>Nome da peça <input name="titulo" required maxlength="60" placeholder="ex.: Vestido midi floral" /></label>
+        <label>Referência / código <span class="opt">opcional</span> <input name="referencia" maxlength="30" placeholder="ex.: 1042" /></label>
+      </div>
+      <div class="two">
+        <label>Preço <input name="preco" inputmode="decimal" placeholder="149,90" /></label>
+        <label>Preço antigo <span class="opt">só em promoção</span> <input name="preco_antigo" inputmode="decimal" placeholder="189,90" /></label>
+      </div>
+      <label>Descrição curta <span class="opt">opcional</span> <textarea name="descricao" rows="2" maxlength="300" placeholder="Tecido, caimento, ocasião…"></textarea></label>
+
+      <div class="two">
+        <label>Tamanhos <span class="opt">separe por vírgula</span> <input name="tamanhos" placeholder="P, M, G, GG" /></label>
+        <label>Cores <span class="opt">separe por vírgula</span> <input name="cores" placeholder="Rosa, Preto" /></label>
+      </div>
+
+      <fieldset class="stores">
+        <legend>Em quais lojas tem</legend>
+        <div class="stores__list" id="pieceStores"></div>
+        <p class="form__hint">Nenhuma marcada = todas as lojas (a cliente escolhe).</p>
+      </fieldset>
+
+      <div class="two">
+        <label>Situação
+          <select name="status">
+            <option value="disponivel">Disponível</option>
+            <option value="ultimas">Últimas unidades</option>
+            <option value="esgotado">Esgotado (fica visível, sem compra)</option>
+          </select></label>
+        <label>Selo <span class="opt">opcional</span> <input name="selo" maxlength="20" placeholder="Novo, Lançamento…" /></label>
+      </div>
+      <div class="two">
+        <label>Link no catálogo <span class="opt">opcional</span> <input name="url" placeholder="https://catalogo.rayanestore.com.br/p/…" /></label>
+        <label>Sai da vitrine em <span class="opt">opcional</span> <input type="datetime-local" name="ate" /></label>
+      </div>
+
       <p class="form__error" id="showcaseError"></p>
       <div class="modal__foot">
-        <button type="button" class="linkish danger" id="deleteShowcase">Apagar</button>
-        <span class="stat"></span>
-        <button class="btn btn--primary" type="submit">Salvar</button>
+        <button type="button" class="linkish danger" id="deleteShowcase" hidden>Apagar</button>
+        <button type="button" class="linkish" id="dupShowcase" hidden>Duplicar</button>
+        <span class="stat" id="pieceStat"></span>
+        <button class="btn btn--primary" type="submit">Salvar <kbd class="kbd-inline">Ctrl S</kbd></button>
       </div>
     </form>
   </div>
@@ -485,9 +535,9 @@
 
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
-  <script src="assets/vendor/supabase.js?v=202610022009"></script>
-  <script src="supabase-config.js?v=202610022009"></script>
-  <script src="icons.js?v=202610022009"></script>
-  <script src="admin.js?v=202610022009"></script>
+  <script src="assets/vendor/supabase.js?v=202610022020"></script>
+  <script src="supabase-config.js?v=202610022020"></script>
+  <script src="icons.js?v=202610022020"></script>
+  <script src="admin.js?v=202610022020"></script>
 </body>
 </html>
