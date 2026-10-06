@@ -17,6 +17,30 @@
   } catch (e) {}
   if (lite) document.documentElement.classList.add("lite");
 
+  /* ─── Trocas de tela suaves (View Transitions) ───
+     Abrir/fechar as folhas passa por transicao(): o navegador fotografa a tela
+     antiga, aplica a mudança e anima entre as duas (sem frame em branco, sem
+     sobreposição). Sem suporte ou em modo leve, a mudança é aplicada na hora. */
+  var vtOK = false;
+  try { vtOK = !lite && typeof document.startViewTransition === "function"; } catch (e) {}
+  if (vtOK) document.documentElement.classList.add("vt");
+  var vtFila = null, vtSeq = 0;
+  function transicao(tipo, fn) {
+    if (!vtOK) { fn(); return; }
+    if (vtFila) { vtFila.fns.push(fn); vtFila.tipo = tipo; return; } // mesmo instante → uma transição só
+    vtFila = { tipo: tipo, fns: [fn] };
+    Promise.resolve().then(function () {
+      var f = vtFila; vtFila = null;
+      var html = document.documentElement, seq = ++vtSeq;
+      function roda() { f.fns.forEach(function (x) { x(); }); }
+      function fim() { if (seq === vtSeq) html.removeAttribute("data-vt"); }
+      html.setAttribute("data-vt", f.tipo);
+      var t;
+      try { t = document.startViewTransition(roda); } catch (e) { fim(); roda(); return; }
+      t.finished.then(fim, fim);
+    });
+  }
+
   var conf = {}, whatsapps = [], redes = [], links = [], destaques = [];
   var pageUrl = location.href.split("#")[0].split("?")[0];
   var pronto = false; // interações já ligadas?
@@ -234,8 +258,14 @@
     var toastEl = document.getElementById("toast");
     var toastTimer, lastFocus, qrDone = false;
 
-    function abrir(sheet) { lastFocus = document.activeElement; sheet.hidden = false; sheet.querySelector(".sheet__x").focus(); }
-    function fechar(sheet) { sheet.hidden = true; if (lastFocus) lastFocus.focus(); }
+    function abrir(sheet) {
+      lastFocus = document.activeElement;
+      transicao("folha", function () { sheet.hidden = false; try { sheet.querySelector(".sheet__x").focus({ preventScroll: true }); } catch (e) {} });
+    }
+    function fechar(sheet) {
+      var volta = lastFocus; lastFocus = null;
+      transicao("folha", function () { sheet.hidden = true; if (volta && volta.focus) try { volta.focus({ preventScroll: true }); } catch (e) {} });
+    }
     function toast(msg) {
       toastEl.textContent = msg; toastEl.classList.add("is-on");
       clearTimeout(toastTimer); toastTimer = setTimeout(function () { toastEl.classList.remove("is-on"); }, 2200);
@@ -318,7 +348,7 @@
         document.getElementById("branches").innerHTML = lojas.map(function (w) {
           return '<a class="branch" href="' + esc(waLink(w, msgEstoque(c, w))) + '" target="_blank" rel="noopener"><span class="branch__icon">' + ICONS.svg("whatsapp") + '</span><span class="branch__text"><span class="branch__name">' + esc(w.nome) + "</span>" + (w.endereco ? '<span class="branch__addr">' + esc(w.endereco) + "</span>" : "") + '</span><span class="tag__go"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 17 17 7M8 7h9v9"/></svg></span></a>';
         }).join("");
-        fechar(pieceSheet); abrir(waSheet);
+        fechar(pieceSheet); abrir(waSheet); // mesmo instante: uma transição só, a ficha vira a lista
         return;
       }
       if (e.target.closest("[data-catalogo]")) API.rpc("registrar_clique_peca", { peca_id: pecaAberta.id, acao: "catalogo", visitante: visitanteId() }).catch(function () {});

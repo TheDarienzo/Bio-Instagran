@@ -806,3 +806,29 @@ kbd, .kbd-inline {
 }
 
 }
+
+/* ─── Trocas de tela (View Transitions) ───────
+   Com suporte do navegador (html.vt), abas, janelas, gaveta e entrada não usam
+   mais as animações CSS de entrada: a troca de tela anima o que sai e o que
+   entra numa única passada, sem frame em branco e sem sobreposição. */
+html.vt .panel.is-active { animation: none; view-transition-name: aba; }
+html.vt .modal__panel, html.vt .modal__backdrop, html.vt .palette, html.vt .drawer__panel, html.vt .drawer__backdrop, html.vt .gate__card { animation: none; }
+html.vt .modal:not([hidden]) .modal__panel, html.vt .modal:not([hidden]) .palette,
+html.vt .drawer:not([hidden]) .drawer__panel, html.vt .gate:not([hidden]) .gate__card { view-transition-name: janela; }
+::view-transition-old(root), ::view-transition-new(root) { animation-duration: .22s; animation-timing-function: ease; }
+/* aba: a antiga some rápido, a nova sobe de leve (sem as duas ficarem visíveis juntas) */
+::view-transition-old(aba) { animation: vt-some .12s ease-in both; }
+::view-transition-new(aba) { animation: vt-sobe .26s var(--ease-swing) both; }
+::view-transition-group(aba) { animation-duration: .26s; animation-timing-function: var(--ease-swing); }
+/* janelas e gaveta: entram subindo, saem descendo */
+::view-transition-new(janela):only-child { animation: vt-sobe .3s var(--ease-swing) both; }
+::view-transition-old(janela):only-child { animation: vt-desce .16s ease-in both; }
+::view-transition-group(janela) { animation-duration: .28s; animation-timing-function: var(--ease-swing); }
+/* troca de tema: só a fusão da tela inteira */
+html[data-vt="tema"]::view-transition-old(root), html[data-vt="tema"]::view-transition-new(root) { animation-duration: .35s; }
+@keyframes vt-sobe { from { opacity: 0; transform: translateY(14px); } }
+@keyframes vt-desce { to { opacity: 0; transform: translateY(14px); } }
+@keyframes vt-some { to { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-group(*), ::view-transition-old(*), ::view-transition-new(*) { animation-duration: 0s !important; }
+}

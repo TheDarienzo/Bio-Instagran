@@ -333,3 +333,19 @@ svg.fill { fill: currentColor; stroke: none; }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; }
 }
+
+/* ─── Trocas de tela (View Transitions) ───────
+   Com suporte do navegador (html.vt), as folhas não usam mais as animações
+   CSS de entrada: a própria troca de tela anima a folha antiga saindo e a
+   nova entrando, numa única passada (sem frame em branco nem sobreposição). */
+html.vt .sheet__backdrop, html.vt .sheet__panel { animation: none; }
+html.vt .sheet:not([hidden]) .sheet__panel { view-transition-name: folha; }
+::view-transition-old(root), ::view-transition-new(root) { animation-duration: .22s; animation-timing-function: ease; }
+::view-transition-new(folha):only-child { animation: vt-sobe .3s var(--ease-out) both; }
+::view-transition-old(folha):only-child { animation: vt-desce .18s ease-in both; }
+::view-transition-group(folha) { animation-duration: .28s; animation-timing-function: var(--ease-out); }
+@keyframes vt-sobe { from { opacity: 0; transform: translateY(26px); } }
+@keyframes vt-desce { to { opacity: 0; transform: translateY(18px); } }
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-group(*), ::view-transition-old(*), ::view-transition-new(*) { animation-duration: 0s !important; }
+}

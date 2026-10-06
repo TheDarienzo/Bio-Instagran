@@ -46,6 +46,35 @@
     return d ? "+" + d : "sem número";
   }
 
+  /* ═══════════ Trocas de tela suaves (View Transitions) ═══════════
+     Toda mudança de tela (aba, janela, gaveta, entrada) passa por transicao():
+     o navegador tira uma "foto" da tela antiga, aplica a mudança e anima
+     entre as duas, sem frame em branco e sem as duas telas sobrepostas.
+     Sem suporte (ou com "reduzir movimento"), a mudança é aplicada na hora. */
+  var vtOK = false;
+  try { vtOK = typeof document.startViewTransition === "function" && !window.matchMedia("(prefers-reduced-motion: reduce)").matches; } catch (e) {}
+  if (vtOK) document.documentElement.classList.add("vt");
+  var vtFila = null, vtSeq = 0;
+  function transicao(tipo, fn) {
+    if (!vtOK) { fn(); return; }
+    // várias trocas no mesmo instante (fechar busca + trocar aba + abrir janela) viram UMA transição
+    if (vtFila) { vtFila.fns.push(fn); vtFila.tipo = tipo; return; }
+    vtFila = { tipo: tipo, fns: [fn] };
+    Promise.resolve().then(function () {
+      var f = vtFila; vtFila = null;
+      var html = document.documentElement, seq = ++vtSeq;
+      function roda() { f.fns.forEach(function (x) { x(); }); }
+      function fim() { if (seq === vtSeq) html.removeAttribute("data-vt"); }
+      html.setAttribute("data-vt", f.tipo);
+      var t;
+      try { t = document.startViewTransition(roda); } catch (e) { fim(); roda(); return; }
+      t.finished.then(fim, fim);
+    });
+  }
+  // mostra/esconde uma janela (modal, gaveta, busca) com transição; foco vai para `foco` depois de aparecer
+  function mostrar(el, foco) { transicao("janela", function () { el.hidden = false; if (foco) try { foco.focus({ preventScroll: true }); } catch (e) {} }); }
+  function ocultar(el) { transicao("janela", function () { el.hidden = true; }); }
+
   var toastTimer;
   // toast(msg) | toast(msg, true) para erro | toast(msg, {acao: "Desfazer", ao: fn})
   function toast(msg, opt) {
@@ -76,9 +105,9 @@
   $("topPreview").addEventListener("click", function () {
     var f = $("previewMobile");
     if (!f.getAttribute("src")) f.src = "index.html";
-    drawer.hidden = false;
+    mostrar(drawer);
   });
-  drawer.addEventListener("click", function (e) { if (e.target.closest("[data-close]")) drawer.hidden = true; });
+  drawer.addEventListener("click", function (e) { if (e.target.closest("[data-close]")) ocultar(drawer); });
 
   // ISO (UTC) → valor para <input type="datetime-local"> no fuso local
   function toLocalInput(iso) {
@@ -169,8 +198,8 @@
   /* ═══════════ Modais ═══════════ */
 
   function wireModal(modal, onClose) {
-    modal.addEventListener("click", function (e) { if (e.target.closest("[data-close]")) { modal.hidden = true; onClose && onClose(); } });
-    document.addEventListener("keydown", function (e) { if (e.key === "Escape" && !modal.hidden) { modal.hidden = true; onClose && onClose(); } });
+    modal.addEventListener("click", function (e) { if (e.target.closest("[data-close]")) { ocultar(modal); onClose && onClose(); } });
+    document.addEventListener("keydown", function (e) { if (e.key === "Escape" && !modal.hidden) { ocultar(modal); onClose && onClose(); } });
   }
 
   /* ═══════════ Entrada / autenticação ═══════════ */
@@ -178,7 +207,7 @@
   var gate = $("gate");
   var shell = $("shell");
 
-  function showGate() { gate.hidden = false; shell.hidden = true; }
+  function showGate() { transicao("tela", function () { gate.hidden = false; shell.hidden = true; }); }
 
   $("loginForm").addEventListener("submit", function (e) {
     e.preventDefault();
@@ -218,6 +247,8 @@
     var meta = document.querySelector('meta[name="theme-color"]');
     if (meta) meta.content = escuro ? "#1b1220" : "#F6EFEA";
   }
+  // troca de tema com fusão suave entre claro e escuro
+  function trocarTema(pref) { transicao("tema", function () { aplicarTema(pref); }); }
   function temaAtual() { try { return localStorage.getItem("rs_tema") || "auto"; } catch (e) { return "auto"; } }
   aplicarTema(temaAtual());
   mediaEscuro.addEventListener("change", function () { if (temaAtual() === "auto") aplicarTema("auto"); });
@@ -225,7 +256,7 @@
   $("themeBtn").addEventListener("click", function () {
     var prox = ORDEM_TEMA[(ORDEM_TEMA.indexOf(temaAtual()) + 1) % ORDEM_TEMA.length];
     try { localStorage.setItem("rs_tema", prox); } catch (e) {}
-    aplicarTema(prox);
+    trocarTema(prox);
     toast(NOME_TEMA[prox] + (prox === "auto" ? " (segue o aparelho)" : ""));
   });
 
@@ -243,12 +274,11 @@
   function goTab(tab) { ativarAba(tab); }
 
   function openPalette() {
-    palette.hidden = false;
     paletteInput.value = "";
     buildPalette("");
-    setTimeout(function () { paletteInput.focus(); }, 30);
+    mostrar(palette, paletteInput);
   }
-  function closePalette() { palette.hidden = true; }
+  function closePalette() { ocultar(palette); }
 
   function buildPalette(q) {
     q = q.trim().toLowerCase();
@@ -293,8 +323,8 @@
     var mod = e.ctrlKey || e.metaKey;
     if (mod && e.key.toLowerCase() === "k") { e.preventDefault(); if (!shell.hidden) (palette.hidden ? openPalette() : closePalette()); }
     if (e.key === "Escape" && !palette.hidden) closePalette();
-    if (e.key === "Escape" && !drawer.hidden) drawer.hidden = true;
-    if (e.key === "Escape" && !mais.hidden) mais.hidden = true;
+    if (e.key === "Escape" && !drawer.hidden) ocultar(drawer);
+    if (e.key === "Escape" && !mais.hidden) ocultar(mais);
     if (mod && e.key.toLowerCase() === "s" && !shell.hidden) {
       e.preventDefault();
       // salva o que estiver aberto: editor de link/loja/acesso, senão o formulário da aba
@@ -316,8 +346,7 @@
         $("loginError").textContent = "Esta conta não tem permissão para entrar no painel.";
         return;
       }
-      gate.hidden = true;
-      shell.hidden = false;
+      transicao("tela", function () { gate.hidden = true; shell.hidden = false; });
       if (!entered) { entered = true; loadAll(); }
     });
   }
@@ -328,12 +357,16 @@
 
   // um só lugar decide qual aba está ativa (menu lateral, barra de abas e menu "Mais" chamam isto)
   function ativarAba(tab) {
-    document.querySelectorAll("#nav [data-tab], #tabbar [data-tab]").forEach(function (x) { x.classList.toggle("is-active", x.dataset.tab === tab); });
-    // no celular, Redes/Horário/Acessos vivem em "Mais": acende o "Mais"
-    $("maisBtn").classList.toggle("is-active", ["vitrine", "redes", "horario", "acessos"].indexOf(tab) >= 0);
-    document.querySelectorAll(".panel").forEach(function (p) { p.classList.toggle("is-active", p.dataset.panel === tab); });
-    $("topTitle").textContent = TITULOS[tab] || "";
-    window.scrollTo(0, 0);
+    var atual = document.querySelector(".panel.is-active");
+    if (atual && atual.dataset.panel === tab) { window.scrollTo(0, 0); return; } // já está nela: não anima
+    transicao("aba", function () {
+      document.querySelectorAll("#nav [data-tab], #tabbar [data-tab]").forEach(function (x) { x.classList.toggle("is-active", x.dataset.tab === tab); });
+      // no celular, Redes/Horário/Acessos vivem em "Mais": acende o "Mais"
+      $("maisBtn").classList.toggle("is-active", ["vitrine", "redes", "horario", "acessos"].indexOf(tab) >= 0);
+      document.querySelectorAll(".panel").forEach(function (p) { p.classList.toggle("is-active", p.dataset.panel === tab); });
+      $("topTitle").textContent = TITULOS[tab] || "";
+      window.scrollTo(0, 0);
+    });
     if (tab === "acessos" && !acessos.length) loadAcessos();
     if (tab === "dash") { dashCache = {}; loadDash(); }
   }
@@ -348,14 +381,14 @@
   });
 
   var mais = $("mais");
-  $("maisBtn").addEventListener("click", function () { $("maisTema").textContent = NOME_TEMA[temaAtual()]; mais.hidden = false; });
+  $("maisBtn").addEventListener("click", function () { $("maisTema").textContent = NOME_TEMA[temaAtual()]; mostrar(mais); });
   mais.addEventListener("click", function (e) {
-    if (e.target.closest("[data-close]")) { mais.hidden = true; return; }
+    if (e.target.closest("[data-close]")) { ocultar(mais); return; }
     var t = e.target.closest("[data-tab]");
-    if (t) { mais.hidden = true; ativarAba(t.dataset.tab); return; }
+    if (t) { ocultar(mais); ativarAba(t.dataset.tab); return; } // viram uma transição só
     var a = e.target.closest("[data-acao]");
     if (!a) return;
-    if (a.dataset.acao === "buscar") { mais.hidden = true; openPalette(); }
+    if (a.dataset.acao === "buscar") { ocultar(mais); openPalette(); }
     if (a.dataset.acao === "tema") { $("themeBtn").click(); $("maisTema").textContent = NOME_TEMA[temaAtual()]; }
     if (a.dataset.acao === "sair") { $("logout").click(); }
   });
@@ -598,8 +631,7 @@
     linkForm.querySelector(".sched").open = !!(link && (link.inicio || link.fim));
     syncTipo();
 
-    editor.hidden = false;
-    setTimeout(function () { linkForm.titulo.focus(); }, 50);
+    mostrar(editor, linkForm.titulo);
   }
   wireModal(editor, function () { editing = null; });
 
@@ -649,7 +681,7 @@
         links[i] = r.data;
       } else links.push(r.data);
       renderLinks();
-      editor.hidden = true; editing = null;
+      ocultar(editor); editing = null;
       toast("Salvo");
       refreshPreview();
     }).catch(function (err) { $("linkError").textContent = erroMsg(err); })
@@ -664,7 +696,7 @@
       if (r.error) return toast(erroMsg(r.error), true);
       links = links.filter(function (x) { return x.id !== alvo.id; });
       renderLinks();
-      editor.hidden = true; editing = null;
+      ocultar(editor); editing = null;
       refreshPreview();
       toast('"' + alvo.titulo + '" apagado', { acao: "Desfazer", ao: function () {
         var copia = Object.assign({}, alvo); delete copia.criado_em;
@@ -685,7 +717,7 @@
       if (r.error) return toast(erroMsg(r.error), true);
       links.push(r.data);
       renderLinks();
-      editor.hidden = true; editing = null;
+      ocultar(editor); editing = null;
       refreshPreview();
       toast("Cópia criada no fim da lista");
     });
@@ -755,8 +787,7 @@
     waForm.endereco.value = w ? w.endereco : "";
     waForm.mapa_url.value = w ? w.mapa_url || "" : "";
     waForm.mensagem.value = w ? w.mensagem : "";
-    waEditor.hidden = false;
-    setTimeout(function () { waForm.nome.focus(); }, 50);
+    mostrar(waEditor, waForm.nome);
   }
   wireModal(waEditor, function () { editingWa = null; });
 
@@ -786,7 +817,7 @@
         whatsapps[i] = r.data;
       } else whatsapps.push(r.data);
       renderWa();
-      waEditor.hidden = true; editingWa = null;
+      ocultar(waEditor); editingWa = null;
       toast("Salvo");
       refreshPreview();
     }).catch(function (err) { $("waError").textContent = erroMsg(err); })
@@ -804,7 +835,7 @@
       whatsapps = whatsapps.filter(function (x) { return x.id !== alvo.id; });
       links.forEach(function (l) { if (l.whatsapp_id === alvo.id) l.whatsapp_id = null; });
       renderWa();
-      waEditor.hidden = true; editingWa = null;
+      ocultar(waEditor); editingWa = null;
       refreshPreview();
       toast('"' + alvo.nome + '" apagada', { acao: "Desfazer", ao: function () {
         var copia = Object.assign({}, alvo); delete copia.criado_em;
@@ -887,7 +918,7 @@
     sb.from("destaques").delete().eq("id", alvo.id).then(function (r) {
       if (r.error) return toast(erroMsg(r.error), true);
       destaques = destaques.filter(function (x) { return x.id !== alvo.id; });
-      renderShowcase(); showcaseEditor.hidden = true; editingShowcase = null; refreshPreview();
+      renderShowcase(); ocultar(showcaseEditor); editingShowcase = null; refreshPreview();
       toast('"' + (alvo.titulo || "Peça") + '" apagada', { acao: "Desfazer", ao: function () {
         var copia = Object.assign({}, alvo); delete copia.criado_em;
         sb.from("destaques").insert(copia).select().single().then(function (r2) {
@@ -978,8 +1009,7 @@
     showcaseForm.selo.value = d ? d.selo || "" : "";
     showcaseForm.url.value = d ? d.url || "" : "";
     showcaseForm.ate.value = d && d.ate ? toLocalInput(d.ate) : "";
-    showcaseEditor.hidden = false;
-    setTimeout(function () { showcaseForm.titulo.focus(); }, 50);
+    mostrar(showcaseEditor, showcaseForm.titulo);
   }
   wireModal(showcaseEditor, function () { editingShowcase = null; });
   $("addPiece").addEventListener("click", function () { openShowcaseEditor(null); });
@@ -1008,7 +1038,7 @@
       if (r.error) throw r.error;
       if (editingShowcase) { var i = destaques.findIndex(function (x) { return x.id === editingShowcase.id; }); destaques[i] = r.data; }
       else destaques.push(r.data);
-      renderShowcase(); showcaseEditor.hidden = true; editingShowcase = null; toast("Peça salva"); refreshPreview();
+      renderShowcase(); ocultar(showcaseEditor); editingShowcase = null; toast("Peça salva"); refreshPreview();
     }).catch(function (err) { $("showcaseError").textContent = erroMsg(err); }).finally(function () { busy(btn, false); });
   });
 
@@ -1019,7 +1049,7 @@
     delete copia.id; delete copia.criado_em;
     sb.from("destaques").insert(copia).select().single().then(function (r) {
       if (r.error) return toast(erroMsg(r.error), true);
-      destaques.push(r.data); renderShowcase(); showcaseEditor.hidden = true; editingShowcase = null; refreshPreview(); toast("Cópia criada");
+      destaques.push(r.data); renderShowcase(); ocultar(showcaseEditor); editingShowcase = null; refreshPreview(); toast("Cópia criada");
     });
   });
 
@@ -1524,8 +1554,7 @@
     $("accessHint").hidden = !!a;
     $("accessEmailField").hidden = !!a;
     accessForm.email.required = !a;
-    accessEditor.hidden = false;
-    setTimeout(function () { (a ? accessForm.senha : accessForm.email).focus(); }, 50);
+    mostrar(accessEditor, a ? accessForm.senha : accessForm.email);
   }
   wireModal(accessEditor, function () { editingAccess = null; });
 
@@ -1537,7 +1566,7 @@
       ? acessosApi({ acao: "senha", user_id: editingAccess.user_id, senha: accessForm.senha.value })
       : acessosApi({ acao: "criar", email: accessForm.email.value.trim(), senha: accessForm.senha.value });
     p.then(function () {
-      accessEditor.hidden = true;
+      ocultar(accessEditor);
       toast(editingAccess ? "Senha redefinida" : "Acesso criado");
       editingAccess = null;
       loadAcessos();

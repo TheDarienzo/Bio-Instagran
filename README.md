@@ -33,6 +33,12 @@ o ícone do site de destino e a contagem regressiva de links agendados. A Visão
 (melhor dia da semana, pico de ontem, links que caíram/subiram, origem principal) e exporta CSV.
 Tema claro/escuro: botão no menu alterna entre automático (segue o aparelho), claro e escuro; a escolha fica guardada no navegador.
 
+Trocas de tela: abas, janelas, gaveta de prévia, entrada e troca de tema (no painel) e as folhas da página
+(ficha da peça, lojas, compartilhar) usam a **View Transitions API** do navegador (`document.startViewTransition`):
+a tela antiga sai e a nova entra numa única animação, sem frame em branco nem duas telas sobrepostas.
+Várias mudanças no mesmo instante (fechar a busca + trocar de aba + abrir o editor) viram uma transição só.
+Em navegador sem suporte, no modo leve ou com "reduzir movimento", a troca é imediata.
+
 ## Acesso ao painel
 
 **Não existe cadastro pela tela de entrada.** Só quem já tem acesso cria novos, na aba Acessos.
