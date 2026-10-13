@@ -25,6 +25,7 @@
   --green: #3f8f5a;
   --body: "Jost", "Futura", "Century Gothic", sans-serif;
   --ease-out: cubic-bezier(.23, 1, .32, 1);
+  --gutter: 18px; /* margem lateral; no celular acompanha a largura da tela */
   color-scheme: light;
 }
 
@@ -55,7 +56,13 @@ body {
   position: relative;
   width: 100%; max-width: 460px;
   margin: 0 auto;
-  padding: max(24px, env(safe-area-inset-top)) 18px max(32px, env(safe-area-inset-bottom));
+  padding: max(24px, env(safe-area-inset-top)) var(--gutter) max(32px, env(safe-area-inset-bottom));
+}
+/* celular (qualquer largura até 720px): ocupa a tela inteira, sem sobra nas laterais */
+@media (max-width: 720px) {
+  :root { --gutter: clamp(16px, 4.5vw, 28px); }
+  .page { max-width: none; }
+  .page .hours { max-width: none; }
 }
 
 svg[viewBox="0 0 24 24"]:not(.fill) { fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
@@ -123,15 +130,15 @@ svg.fill { fill: currentColor; stroke: none; }
 
 .showcase {
   display: flex; gap: 10px;
-  margin: 0 -18px; padding: 4px 18px 10px;
-  scroll-padding-left: 18px;
+  margin: 0 calc(-1 * var(--gutter)); padding: 4px var(--gutter) 10px;
+  scroll-padding-left: var(--gutter);
   overflow-x: auto; overscroll-behavior-x: contain;
   scroll-snap-type: x mandatory; -webkit-overflow-scrolling: touch;
   scrollbar-width: none;
 }
 .showcase::-webkit-scrollbar { display: none; }
 .card {
-  flex: 0 0 148px; scroll-snap-align: start;
+  flex: 0 0 clamp(140px, 38vw, 184px); scroll-snap-align: start; /* acompanha a largura da tela */
   position: relative; overflow: hidden;
   border-radius: 16px;
   background: var(--paper);
@@ -278,7 +285,8 @@ svg.fill { fill: currentColor; stroke: none; }
   animation: rise .28s var(--ease-out) both;
 }
 .sheet__panel::before { content: ""; position: absolute; top: 9px; left: 50%; width: 40px; height: 4px; border-radius: 4px; background: var(--hair); transform: translateX(-50%); }
-@media (min-width: 560px) {
+@media (max-width: 720px) { .sheet__panel { width: 100%; } }
+@media (min-width: 721px) {
   .sheet__panel { bottom: 50%; translate: 0 50%; border-radius: 24px; }
   .sheet__panel::before { display: none; }
 }
